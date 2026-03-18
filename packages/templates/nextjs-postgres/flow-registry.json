@@ -1,0 +1,11 @@
+{
+  "flows": [
+    {
+      "id": "flow-auth",
+      "path": ".flows/user-authentication.md",
+      "title": "User Authentication Flow",
+      "criticality": "critical",
+      "file_patterns": ["app/api/auth/**", "lib/auth.ts", "app/(auth)/**"]
+    }
+  ]
+}

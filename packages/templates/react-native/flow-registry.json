@@ -1,0 +1,11 @@
+{
+  "flows": [
+    {
+      "id": "flow-navigation",
+      "path": ".flows/screen-navigation.md",
+      "title": "Screen Navigation Flow",
+      "criticality": "medium",
+      "file_patterns": ["src/navigation/**", "src/screens/**"]
+    }
+  ]
+}

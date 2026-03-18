@@ -1,0 +1,11 @@
+{
+  "flows": [
+    {
+      "id": "flow-request-auth",
+      "path": ".flows/request-authentication.md",
+      "title": "Request Authentication Flow",
+      "criticality": "critical",
+      "file_patterns": ["app/routers/auth.py", "app/core/security.py", "app/dependencies/auth.py"]
+    }
+  ]
+}

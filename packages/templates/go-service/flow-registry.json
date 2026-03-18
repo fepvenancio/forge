@@ -1,0 +1,11 @@
+{
+  "flows": [
+    {
+      "id": "flow-http-request",
+      "path": ".flows/http-request-handling.md",
+      "title": "HTTP Request Handling Flow",
+      "criticality": "high",
+      "file_patterns": ["internal/handler/**", "internal/middleware/**"]
+    }
+  ]
+}
