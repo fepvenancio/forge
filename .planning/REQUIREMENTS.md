@@ -144,69 +144,69 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SCHEMA-01 | — | Pending |
-| SCHEMA-02 | — | Pending |
-| SCHEMA-03 | — | Pending |
-| IDENT-01 | — | Pending |
-| IDENT-02 | — | Pending |
-| IDENT-03 | — | Pending |
-| PHASE-01 | — | Pending |
-| PHASE-02 | — | Pending |
-| PHASE-03 | — | Pending |
-| PHASE-04 | — | Pending |
-| PHASE-05 | — | Pending |
-| PHASE-06 | — | Pending |
-| BRANCH-01 | — | Pending |
-| BRANCH-02 | — | Pending |
-| GSD-01 | — | Pending |
-| GSD-02 | — | Pending |
-| GSD-03 | — | Pending |
-| GSD-04 | — | Pending |
-| GSD-05 | — | Pending |
-| CONFLICT-01 | — | Pending |
-| CONFLICT-02 | — | Pending |
-| CONFLICT-03 | — | Pending |
-| CONFLICT-04 | — | Pending |
-| LOCK-01 | — | Pending |
-| LOCK-02 | — | Pending |
-| LOCK-03 | — | Pending |
-| LOCK-04 | — | Pending |
-| MERGE-01 | — | Pending |
-| MERGE-02 | — | Pending |
-| MERGE-03 | — | Pending |
-| MERGE-04 | — | Pending |
-| CI-01 | — | Pending |
-| CI-02 | — | Pending |
-| CI-03 | — | Pending |
-| CI-04 | — | Pending |
-| CI-05 | — | Pending |
-| CI-06 | — | Pending |
-| FLOW-01 | — | Pending |
-| FLOW-02 | — | Pending |
-| FLOW-03 | — | Pending |
-| ESC-01 | — | Pending |
-| ESC-02 | — | Pending |
-| DASH-01 | — | Pending |
-| DASH-02 | — | Pending |
-| DASH-03 | — | Pending |
-| DASH-04 | — | Pending |
-| DASH-05 | — | Pending |
-| DASH-06 | — | Pending |
-| COST-01 | — | Pending |
-| COST-02 | — | Pending |
-| COST-03 | — | Pending |
-| COST-04 | — | Pending |
-| COST-05 | — | Pending |
-| CLI-01 | — | Pending |
-| CLI-02 | — | Pending |
-| CLI-03 | — | Pending |
-| CLI-04 | — | Pending |
+| SCHEMA-01 | Phase 1 | Pending |
+| SCHEMA-02 | Phase 1 | Pending |
+| SCHEMA-03 | Phase 1 | Pending |
+| IDENT-01 | Phase 1 | Pending |
+| IDENT-02 | Phase 1 | Pending |
+| IDENT-03 | Phase 1 | Pending |
+| PHASE-01 | Phase 1 | Pending |
+| PHASE-02 | Phase 1 | Pending |
+| PHASE-03 | Phase 1 | Pending |
+| PHASE-04 | Phase 1 | Pending |
+| PHASE-05 | Phase 1 | Pending |
+| PHASE-06 | Phase 1 | Pending |
+| BRANCH-01 | Phase 1 | Pending |
+| BRANCH-02 | Phase 1 | Pending |
+| CLI-01 | Phase 1 | Pending |
+| CLI-02 | Phase 1 | Pending |
+| CLI-03 | Phase 1 | Pending |
+| CLI-04 | Phase 1 | Pending |
+| GSD-01 | Phase 2 | Pending |
+| GSD-02 | Phase 2 | Pending |
+| GSD-03 | Phase 2 | Pending |
+| GSD-04 | Phase 2 | Pending |
+| GSD-05 | Phase 2 | Pending |
+| CONFLICT-01 | Phase 2 | Pending |
+| CONFLICT-02 | Phase 2 | Pending |
+| CONFLICT-03 | Phase 2 | Pending |
+| CONFLICT-04 | Phase 2 | Pending |
+| LOCK-01 | Phase 2 | Pending |
+| LOCK-02 | Phase 2 | Pending |
+| LOCK-03 | Phase 2 | Pending |
+| LOCK-04 | Phase 2 | Pending |
+| CI-01 | Phase 3 | Pending |
+| CI-02 | Phase 3 | Pending |
+| CI-03 | Phase 3 | Pending |
+| CI-04 | Phase 3 | Pending |
+| CI-05 | Phase 3 | Pending |
+| CI-06 | Phase 3 | Pending |
+| FLOW-01 | Phase 3 | Pending |
+| FLOW-02 | Phase 3 | Pending |
+| FLOW-03 | Phase 3 | Pending |
+| MERGE-01 | Phase 3 | Pending |
+| MERGE-02 | Phase 3 | Pending |
+| MERGE-03 | Phase 3 | Pending |
+| MERGE-04 | Phase 3 | Pending |
+| ESC-01 | Phase 3 | Pending |
+| ESC-02 | Phase 3 | Pending |
+| DASH-01 | Phase 4 | Pending |
+| DASH-02 | Phase 4 | Pending |
+| DASH-03 | Phase 4 | Pending |
+| DASH-04 | Phase 4 | Pending |
+| DASH-05 | Phase 4 | Pending |
+| DASH-06 | Phase 4 | Pending |
+| COST-01 | Phase 4 | Pending |
+| COST-02 | Phase 4 | Pending |
+| COST-03 | Phase 4 | Pending |
+| COST-04 | Phase 4 | Pending |
+| COST-05 | Phase 4 | Pending |
 
 **Coverage:**
-- v1 requirements: 55 total
-- Mapped to phases: 0
-- Unmapped: 55
+- v1 requirements: 57 total
+- Mapped to phases: 57
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-18*
-*Last updated: 2026-03-18 after initial definition*
+*Last updated: 2026-03-18 after roadmap creation*
