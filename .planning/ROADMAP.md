@@ -29,9 +29,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Running `forge phases` shows all phases with ownership, status lifecycle (assigned/in_progress/pr_open/merged/blocked), and branch names
   4. Running `forge sync` and `forge status` show current team-wide state pulled from Dolt
   5. Old v0.1.0 data is archived safely (tagged, prefixed) before the new schema tables are active
-**Plans**: 3 plans
+**Plans**: 4 plans
 
 Plans:
+- [ ] 01-00-PLAN.md — Wave 0 test stubs for all command and integration test files
 - [ ] 01-01-PLAN.md — Dolt v2 schema migration, v0.1.0 archive, TypeScript types and query functions
 - [ ] 01-02-PLAN.md — CLI framework (commander), developer registry (register/team), sync and status commands
 - [ ] 01-03-PLAN.md — Phase assignment (claim/assign/release/phases) and branch management with 1:1:1 enforcement

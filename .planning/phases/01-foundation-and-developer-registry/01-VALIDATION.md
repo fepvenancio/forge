@@ -3,7 +3,7 @@ phase: 1
 slug: foundation-and-developer-registry
 status: draft
 nyquist_compliant: false
-wave_0_complete: false
+wave_0_complete: false  # Plan 01-00 creates all stubs
 created: 2026-03-18
 ---
 
