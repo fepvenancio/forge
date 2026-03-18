@@ -212,25 +212,32 @@ IMPORTANT:
 - Do NOT output raw markdown or text outside the JSON structure
 - If the task is documentation-only (e.g., writing a .md file), still wrap the content in the JSON files array`);
 
-      const { content: responseText, model: usedModel } = await invokeWithFallback(
-        modelName,
-        [
-          new SystemMessage(systemPrompt),
-          new HumanMessage(contextParts.join("\n\n---\n\n")),
-        ],
-        taskId,
-      );
-      if (usedModel !== modelName) {
-        console.log(`[worker] Task ${taskId}: completed via fallback model ${usedModel}`);
-      }
+      // Worker invocation with retry-on-zero-files
+      const MAX_WORKER_ATTEMPTS = 2;
+      let workerOutput: { files?: Array<{ path: string; content: string }>; handoff?: Record<string, unknown> } = {};
+      let usedModel = modelName;
 
-      // Parse the structured response
-      let workerOutput: { files?: Array<{ path: string; content: string }>; handoff?: Record<string, unknown> };
-      try {
-        // Try extracting JSON from markdown fences first, then raw
-        const jsonMatch = responseText.match(/```json\s*([\s\S]*?)```/) || [null, responseText];
-        workerOutput = JSON.parse(jsonMatch[1]!.trim());
-      } catch {
+      for (let attempt = 0; attempt < MAX_WORKER_ATTEMPTS; attempt++) {
+        const messages = [
+          new SystemMessage(systemPrompt),
+          new HumanMessage(
+            attempt === 0
+              ? contextParts.join("\n\n---\n\n")
+              : contextParts.join("\n\n---\n\n") + "\n\n---\n\n## CRITICAL RETRY NOTICE\nYour previous response was NOT valid JSON and produced ZERO files. You MUST respond with a JSON object containing a \"files\" array and a \"handoff\" object. Do NOT write prose or markdown. Start your response with { and end with }.",
+          ),
+        ];
+
+        const result = await invokeWithFallback(modelName, messages, taskId);
+        usedModel = result.model;
+        if (usedModel !== modelName) {
+          console.log(`[worker] Task ${taskId}: completed via fallback model ${usedModel}`);
+        }
+
+        // Parse the structured response
+        try {
+          const jsonMatch = result.content.match(/```json\s*([\s\S]*?)```/) || [null, result.content];
+          workerOutput = JSON.parse(jsonMatch[1]!.trim());
+        } catch {
         // JSON parse failed — try to salvage file content from raw response.
         // Models often produce the file content directly (especially for .md files)
         // or wrap it in non-JSON markdown. Extract what we can.
@@ -242,7 +249,7 @@ IMPORTANT:
         if (writeFiles.length === 1) {
           // Single file task: treat entire response as the file content.
           // Strip any leading JSON attempts or markdown wrapper.
-          let rawContent = responseText;
+          let rawContent = result.content;
 
           // Remove wrapping ```markdown ... ``` if present
           const mdFence = rawContent.match(/^```(?:markdown|md)?\s*\n([\s\S]*?)```\s*$/);
@@ -266,7 +273,7 @@ IMPORTANT:
           for (const filePath of writeFiles) {
             const escapedPath = filePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const pattern = new RegExp(`(?:#{2,3}\\s*${escapedPath}|File:\\s*\`?${escapedPath}\`?)\\s*\\n\`\`\`[^\\n]*\\n([\\s\\S]*?)\`\`\``, 'i');
-            const match = responseText.match(pattern);
+            const match = result.content.match(pattern);
             if (match) {
               extractedFiles.push({ path: filePath, content: match[1].trim() });
               console.log(`[worker] Task ${taskId}: extracted fenced content for ${filePath} (${match[1].trim().length} chars)`);
@@ -286,6 +293,17 @@ IMPORTANT:
             files_modified: extractedFiles.map(f => f.path),
           },
         };
+        }
+
+        // Check if we got files — if yes, break; if no and we can retry, loop
+        const hasFiles = workerOutput.files && workerOutput.files.length > 0;
+        if (hasFiles || attempt === MAX_WORKER_ATTEMPTS - 1) {
+          if (!hasFiles && attempt === MAX_WORKER_ATTEMPTS - 1) {
+            console.warn(`[worker] Task ${taskId}: no files produced after ${MAX_WORKER_ATTEMPTS} attempts`);
+          }
+          break;
+        }
+        console.log(`[worker] Task ${taskId}: 0 files produced, retrying (attempt ${attempt + 2}/${MAX_WORKER_ATTEMPTS})...`);
       }
 
       // Write files to worktree
