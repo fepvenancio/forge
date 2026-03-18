@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  dolt:
+    image: dolthub/dolt-sql-server:latest
+    ports:
+      - "${DOLT_PORT:-3306}:3306"
+    volumes:
+      - dolt-data:/var/lib/dolt
+      - ./dolt/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    environment:
+      DOLT_ROOT_HOST: "%"
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: '1.0'
+    healthcheck:
+      test: ["CMD", "dolt", "sql", "-q", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/dashboard.Dockerfile
+    ports:
+      - "${STREAMLIT_PORT:-8501}:8501"
+    environment:
+      - DOLT_HOST=dolt
+      - DOLT_PORT=3306
+      - DOLT_DATABASE=${DOLT_DATABASE:-forge}
+    depends_on:
+      dolt:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: '0.5'
+
+  webhook:
+    build:
+      context: .
+      dockerfile: docker/webhook.Dockerfile
+    ports:
+      - "${FORGE_WEBHOOK_PORT:-3001}:3001"
+    environment:
+      - DOLT_HOST=dolt
+      - DOLT_PORT=3306
+      - DOLT_DATABASE=${DOLT_DATABASE:-forge}
+      - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
+      - FORGE_WEBHOOK_PORT=3001
+    depends_on:
+      dolt:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: '0.25'
+
+volumes:
+  dolt-data:

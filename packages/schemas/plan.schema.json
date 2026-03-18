@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "type": "object",
+  "required": ["task_id", "cycle_id", "title", "tasks", "reasoning"],
+  "properties": {
+    "task_id": { "type": "string" },
+    "cycle_id": { "type": "string" },
+    "title": { "type": "string" },
+    "reasoning": { "type": "string" },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "layer", "complexity", "touch_map", "acceptance_criteria", "must_not_change"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "layer": { "enum": ["frontend", "backend", "database", "infra", "any"] },
+          "complexity": { "enum": ["standard", "complex"] },
+          "depends_on": { "type": "array", "items": { "type": "string" } },
+          "touch_map": {
+            "type": "object",
+            "required": ["reads", "writes"],
+            "properties": {
+              "reads": { "type": "array", "items": { "type": "string" } },
+              "writes": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "acceptance_criteria": { "type": "array", "items": { "type": "string" } },
+          "must_not_change": { "type": "array", "items": { "type": "string" } },
+          "relevant_flows": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "type": "object",
+  "required": ["cycle_id", "decision", "workers_reviewed"],
+  "properties": {
+    "cycle_id": { "type": "string" },
+    "decision": { "enum": ["merge", "human_required", "abort"] },
+    "workers_reviewed": { "type": "array", "items": { "type": "string" } },
+    "invariant_checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["invariant", "result"],
+        "properties": {
+          "invariant": { "type": "string" },
+          "result": { "enum": ["pass", "fail"] },
+          "detail": { "type": "string" }
+        }
+      }
+    },
+    "touch_map_violations": { "type": "array", "items": { "type": "string" } },
+    "revision_instructions": { "type": "string" },
+    "merge_order": { "type": "array", "items": { "type": "string" } }
+  }
+}

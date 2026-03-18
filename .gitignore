@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+
+# Build
+dist/
+*.tsbuildinfo
+
+# Forge runtime
+.forge/
+*.worktree
+
+# Environment
+.env
+.env.local
+
+# Dolt data directory (not the schema scripts)
+dolt/.dolt/
+dolt/*/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test
+coverage/

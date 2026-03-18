@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "type": "object",
+  "required": ["task_id", "runner", "status", "tests"],
+  "properties": {
+    "task_id": { "type": "string" },
+    "runner": { "type": "string" },
+    "status": { "enum": ["pass", "fail", "skipped"] },
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "result"],
+        "properties": {
+          "name": { "type": "string" },
+          "result": { "enum": ["pass", "fail", "skipped"] },
+          "iterations": { "type": "integer" },
+          "shrunk_input": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      }
+    }
+  }
+}

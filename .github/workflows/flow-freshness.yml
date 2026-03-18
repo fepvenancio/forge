@@ -1,0 +1,21 @@
+name: Flow Freshness
+on: [pull_request]
+jobs:
+  check-flows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Forge gates
+        run: pip install -r packages/gates/requirements.txt
+      - name: Check Flow freshness
+        run: python packages/gates/flow_freshness.py
+        env:
+          DOLT_HOST: ${{ secrets.DOLT_HOST }}
+          DOLT_PORT: ${{ secrets.DOLT_PORT }}
+          DOLT_DATABASE: forge

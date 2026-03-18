@@ -1,0 +1,45 @@
+{
+  "planner": {
+    "model_threshold_loc": 400000,
+    "model_below_threshold": "claude-opus-4-6",
+    "model_above_threshold": "gemini-3-1-pro-preview"
+  },
+  "workers": {
+    "default_model": "gemini-3-flash-preview",
+    "protocol_model": "claude-sonnet-4-6",
+    "max_parallel": 20
+  },
+  "sub_judge": {
+    "model": "gemini-3-flash-preview"
+  },
+  "high_court": {
+    "model": "claude-opus-4-6"
+  },
+  "librarian": {
+    "model": "claude-sonnet-4-6",
+    "batch_threshold": 10
+  },
+  "cost": {
+    "max_cycle_cost_usd": 50,
+    "pricing": {
+      "claude-opus-4-6":          { "input_per_1m": 15.00, "output_per_1m": 75.00 },
+      "claude-sonnet-4-6":        { "input_per_1m": 3.00,  "output_per_1m": 15.00 },
+      "gemini-3-1-pro-preview":   { "input_per_1m": 1.25,  "output_per_1m": 5.00 },
+      "gemini-3-flash-preview":   { "input_per_1m": 0.075, "output_per_1m": 0.30 }
+    }
+  },
+  "dolt": {
+    "host": "localhost",
+    "port": 3306,
+    "database": "forge"
+  },
+  "docker": {
+    "worker_image": "forge-worker:latest",
+    "network": "none",
+    "resources": {
+      "memory": "2g",
+      "cpus": "1.0",
+      "note": "20 parallel workers × 2GB = 40GB peak. On laptops (16GB RAM) set max_parallel to 4 and memory to 1g."
+    }
+  }
+}

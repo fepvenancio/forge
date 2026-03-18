@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "type": "object",
+  "required": ["task_id", "stage_run_id", "status", "checks"],
+  "properties": {
+    "task_id": { "type": "string" },
+    "stage_run_id": { "type": "string" },
+    "status": { "enum": ["pass", "fail", "warn"] },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "result"],
+        "properties": {
+          "name": { "type": "string" },
+          "result": { "enum": ["pass", "fail", "warn", "skipped"] },
+          "location": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      }
+    },
+    "escalate_to_high_court": { "type": "boolean" },
+    "escalation_reason": { "type": "string" }
+  }
+}
