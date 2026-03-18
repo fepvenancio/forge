@@ -1,12 +1,62 @@
 import { ChatAnthropic } from "@langchain/anthropic";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
-import { readFileSync, existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
+import { resolve, relative, extname } from "node:path";
 import { loadPrompt } from "../prompts/loader.js";
 import { validate, formatValidationFeedback } from "../gates/validator.js";
 import { selectPlannerModel, countLOC, countFlows } from "../models/selector.js";
 import type { ForgeStateType } from "../state.js";
+
+const TREE_EXCLUDED_DIRS = new Set([
+  "node_modules", ".git", "dist", "build", ".next", "__pycache__",
+  "target", "vendor", ".forge", "coverage", ".dolt", ".turbo",
+  ".vercel", ".wrangler",
+]);
+
+/**
+ * Generate a file tree listing for the planner (max depth 4, max 500 entries).
+ */
+function generateFileTree(rootPath: string, maxDepth = 4, maxEntries = 500): string {
+  const entries: string[] = [];
+
+  function walk(dir: string, depth: number): void {
+    if (depth > maxDepth || entries.length >= maxEntries) return;
+    let items;
+    try {
+      items = readdirSync(dir, { withFileTypes: true });
+    } catch { return; }
+
+    // Sort: dirs first, then files
+    items.sort((a, b) => {
+      if (a.isDirectory() && !b.isDirectory()) return -1;
+      if (!a.isDirectory() && b.isDirectory()) return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    for (const item of items) {
+      if (entries.length >= maxEntries) break;
+      if (item.name.startsWith(".") && TREE_EXCLUDED_DIRS.has(item.name)) continue;
+      if (TREE_EXCLUDED_DIRS.has(item.name)) continue;
+
+      const fullPath = resolve(dir, item.name);
+      const relPath = relative(rootPath, fullPath);
+
+      if (item.isDirectory()) {
+        entries.push(`${relPath}/`);
+        walk(fullPath, depth + 1);
+      } else {
+        entries.push(relPath);
+      }
+    }
+  }
+
+  walk(rootPath, 0);
+  if (entries.length >= maxEntries) {
+    entries.push(`... (truncated at ${maxEntries} entries)`);
+  }
+  return entries.join("\n");
+}
 
 function createModelForPlanner(modelName: string) {
   if (modelName.startsWith("claude")) {
@@ -48,10 +98,19 @@ export async function plannerNode(
     contextParts.push(`## ARCHITECTURE.md\n${readFileSync(archPath, "utf8")}`);
   }
 
-  // Codebase summary
+  // Codebase summary with file tree
   const loc = countLOC(projectPath);
   const flows = countFlows(projectPath);
-  contextParts.push(`## Codebase Summary\nTotal LOC: ${loc}\nFlow documents: ${flows}`);
+  const fileTree = generateFileTree(projectPath);
+  contextParts.push(`## Codebase Summary\nTotal LOC: ${loc}\nFlow documents: ${flows}\n\n### File Tree\n\`\`\`\n${fileTree}\n\`\`\``);
+
+  // Read SECURITY.md and QUALITY.md if they exist
+  for (const docFile of ["SECURITY.md", "QUALITY.md"]) {
+    const docPath = resolve(projectPath, docFile);
+    if (existsSync(docPath)) {
+      contextParts.push(`## ${docFile}\n${readFileSync(docPath, "utf8")}`);
+    }
+  }
 
   // Add retry feedback if this is a retry
   if (plannerRetries > 0 && state.errors.length > 0) {
