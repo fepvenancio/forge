@@ -1,11 +1,33 @@
+import { ChatAnthropic } from "@langchain/anthropic";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { HumanMessage, SystemMessage } from "@langchain/core/messages";
+import { HumanMessage, SystemMessage, type BaseMessage } from "@langchain/core/messages";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadPrompt } from "../prompts/loader.js";
 import { getModelForRole } from "../models/selector.js";
 import { getWorktreePath } from "../worktree/manager.js";
 import type { ForgeStateType } from "../state.js";
+
+const FALLBACK_MODEL = "claude-sonnet-4-6";
+
+async function invokeWithFallback(
+  primaryModelName: string,
+  messages: BaseMessage[],
+  taskId: string,
+): Promise<string> {
+  try {
+    const model = primaryModelName.startsWith("claude")
+      ? new ChatAnthropic({ model: primaryModelName, temperature: 0 })
+      : new ChatGoogleGenerativeAI({ model: primaryModelName, temperature: 0 });
+    const response = await model.invoke(messages);
+    return typeof response.content === "string" ? response.content : JSON.stringify(response.content);
+  } catch (err) {
+    console.warn(`[sub-judge] Task ${taskId}: ${primaryModelName} failed, falling back to ${FALLBACK_MODEL}`);
+    const fallback = new ChatAnthropic({ model: FALLBACK_MODEL, temperature: 0 });
+    const response = await fallback.invoke(messages);
+    return typeof response.content === "string" ? response.content : JSON.stringify(response.content);
+  }
+}
 
 export async function subJudgeNode(
   state: ForgeStateType,
@@ -22,7 +44,6 @@ export async function subJudgeNode(
     console.log(`[sub-judge] Reviewing task ${taskId}`);
 
     try {
-      const model = new ChatGoogleGenerativeAI({ model: modelName, temperature: 0 });
       const worktreePath = getWorktreePath(projectPath, taskId);
 
       const contextParts: string[] = [];
@@ -30,14 +51,14 @@ export async function subJudgeNode(
       contextParts.push(`Branch: ${workerBranches[taskId] || "unknown"}`);
       contextParts.push(`Worktree: ${worktreePath}`);
 
-      const response = await model.invoke([
-        new SystemMessage(systemPrompt),
-        new HumanMessage(contextParts.join("\n\n")),
-      ]);
-
-      const responseText = typeof response.content === "string"
-        ? response.content
-        : JSON.stringify(response.content);
+      const responseText = await invokeWithFallback(
+        modelName,
+        [
+          new SystemMessage(systemPrompt),
+          new HumanMessage(contextParts.join("\n\n")),
+        ],
+        taskId,
+      );
 
       // Parse and validate report
       let report: Record<string, unknown>;

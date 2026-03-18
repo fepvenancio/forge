@@ -21,11 +21,42 @@ interface TaskPlan {
   relevant_flows?: string[];
 }
 
+const FALLBACK_MODEL = "claude-sonnet-4-6";
+
 function createModelForWorker(modelName: string) {
   if (modelName.startsWith("claude")) {
     return new ChatAnthropic({ model: modelName, temperature: 0 });
   }
   return new ChatGoogleGenerativeAI({ model: modelName, temperature: 0 });
+}
+
+/**
+ * Invoke model with automatic fallback to Claude if primary model fails.
+ */
+async function invokeWithFallback(
+  primaryModelName: string,
+  messages: Array<import("@langchain/core/messages").BaseMessage>,
+  taskId: string,
+): Promise<{ content: string; model: string }> {
+  try {
+    const model = createModelForWorker(primaryModelName);
+    const response = await model.invoke(messages);
+    const content = typeof response.content === "string"
+      ? response.content
+      : JSON.stringify(response.content);
+    return { content, model: primaryModelName };
+  } catch (primaryError) {
+    const errMsg = primaryError instanceof Error ? primaryError.message : String(primaryError);
+    console.warn(`[worker] Task ${taskId}: primary model ${primaryModelName} failed: ${errMsg}`);
+    console.log(`[worker] Task ${taskId}: falling back to ${FALLBACK_MODEL}`);
+
+    const fallback = new ChatAnthropic({ model: FALLBACK_MODEL, temperature: 0 });
+    const response = await fallback.invoke(messages);
+    const content = typeof response.content === "string"
+      ? response.content
+      : JSON.stringify(response.content);
+    return { content, model: FALLBACK_MODEL };
+  }
 }
 
 function readFileSafe(filePath: string): string | null {
@@ -57,7 +88,6 @@ export async function workerNode(
 
     try {
       const worktreePath = getWorktreePath(projectPath, taskId);
-      const model = createModelForWorker(modelName);
 
       // Find this task's plan
       const taskPlan = tasks.find((t) => t.id === taskId);
@@ -141,14 +171,17 @@ IMPORTANT:
 - Include all imports and dependencies
 - The "content" field must contain the FULL file content (not a diff)`);
 
-      const response = await model.invoke([
-        new SystemMessage(systemPrompt),
-        new HumanMessage(contextParts.join("\n\n---\n\n")),
-      ]);
-
-      const responseText = typeof response.content === "string"
-        ? response.content
-        : JSON.stringify(response.content);
+      const { content: responseText, model: usedModel } = await invokeWithFallback(
+        modelName,
+        [
+          new SystemMessage(systemPrompt),
+          new HumanMessage(contextParts.join("\n\n---\n\n")),
+        ],
+        taskId,
+      );
+      if (usedModel !== modelName) {
+        console.log(`[worker] Task ${taskId}: completed via fallback model ${usedModel}`);
+      }
 
       // Parse the structured response
       let workerOutput: { files?: Array<{ path: string; content: string }>; handoff?: Record<string, unknown> };
