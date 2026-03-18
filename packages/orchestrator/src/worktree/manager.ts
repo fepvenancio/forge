@@ -7,7 +7,7 @@ const FORGE_DIR = ".forge";
 const WORKTREES_DIR = "worktrees";
 
 function exec(cmd: string, opts?: ExecSyncOptions): string {
-  return execSync(cmd, { encoding: "utf8", ...opts }).trim();
+  return (execSync(cmd, { encoding: "utf8", ...opts }) as string).trim();
 }
 
 export interface WorktreeInfo {

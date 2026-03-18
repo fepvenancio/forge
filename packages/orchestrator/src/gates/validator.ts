@@ -1,5 +1,5 @@
-import Ajv, { type ErrorObject } from "ajv";
-import addFormats from "ajv-formats";
+import AjvModule, { type ErrorObject, type ValidateFunction } from "ajv";
+import addFormatsModule from "ajv-formats";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve, basename } from "node:path";
 
@@ -26,12 +26,19 @@ export type SchemaType =
   | "high-court-report"
   | "cycle-cost-report";
 
-let ajvInstance: Ajv | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let ajvInstance: any = null;
 
-function getAjv(): Ajv {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getAjv(): any {
   if (!ajvInstance) {
-    ajvInstance = new Ajv({ allErrors: true, strict: false });
-    addFormats(ajvInstance);
+    // Handle ESM/CJS interop
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const AjvClass = (AjvModule as any).default || AjvModule;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const addFmts = (addFormatsModule as any).default || addFormatsModule;
+    ajvInstance = new AjvClass({ allErrors: true, strict: false });
+    addFmts(ajvInstance);
 
     // Load all schemas from the schemas directory
     const files = readdirSync(SCHEMAS_DIR).filter((f) => f.endsWith(".schema.json"));
