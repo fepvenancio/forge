@@ -22,7 +22,8 @@ interface TaskPlan {
 }
 
 const FALLBACK_MODEL = "claude-sonnet-4-6";
-const MODEL_TIMEOUT_MS = 300_000; // 5 minutes per model call
+const WORKER_TIMEOUT_MS = 600_000; // 10 minutes — workers read large files and generate full rewrites
+const MAX_RETRIES = 1; // retry once before marking as failed
 
 function createModelForWorker(modelName: string) {
   if (modelName.startsWith("claude")) {
@@ -32,49 +33,68 @@ function createModelForWorker(modelName: string) {
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
   return Promise.race([
-    promise,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms),
-    ),
+    promise.finally(() => clearTimeout(timer)),
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms);
+    }),
   ]);
 }
 
 /**
  * Invoke model with automatic fallback to Claude if primary model fails or times out.
+ * Retries the fallback once on failure before giving up.
  */
 async function invokeWithFallback(
   primaryModelName: string,
   messages: Array<import("@langchain/core/messages").BaseMessage>,
   taskId: string,
 ): Promise<{ content: string; model: string }> {
+  // Try primary model
   try {
+    console.log(`[worker] Task ${taskId}: calling ${primaryModelName}...`);
+    const callStart = Date.now();
     const model = createModelForWorker(primaryModelName);
     const response = await withTimeout(
       model.invoke(messages),
-      MODEL_TIMEOUT_MS,
+      WORKER_TIMEOUT_MS,
       `${primaryModelName} for ${taskId}`,
     );
+    console.log(`[worker] Task ${taskId}: ${primaryModelName} responded in ${((Date.now() - callStart) / 1000).toFixed(1)}s`);
     const content = typeof response.content === "string"
       ? response.content
       : JSON.stringify(response.content);
     return { content, model: primaryModelName };
   } catch (primaryError) {
     const errMsg = primaryError instanceof Error ? primaryError.message : String(primaryError);
-    console.warn(`[worker] Task ${taskId}: primary model ${primaryModelName} failed: ${errMsg}`);
-    console.log(`[worker] Task ${taskId}: falling back to ${FALLBACK_MODEL}`);
-
-    const fallback = new ChatAnthropic({ model: FALLBACK_MODEL, temperature: 0 });
-    const response = await withTimeout(
-      fallback.invoke(messages),
-      MODEL_TIMEOUT_MS,
-      `${FALLBACK_MODEL} fallback for ${taskId}`,
-    );
-    const content = typeof response.content === "string"
-      ? response.content
-      : JSON.stringify(response.content);
-    return { content, model: FALLBACK_MODEL };
+    console.warn(`[worker] Task ${taskId}: ${primaryModelName} failed: ${errMsg}`);
   }
+
+  // Fallback to Claude with retry
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const label = attempt === 0 ? "fallback" : `fallback retry ${attempt}`;
+      console.log(`[worker] Task ${taskId}: ${label} → ${FALLBACK_MODEL}`);
+      const callStart = Date.now();
+      const fallback = new ChatAnthropic({ model: FALLBACK_MODEL, temperature: 0 });
+      const response = await withTimeout(
+        fallback.invoke(messages),
+        WORKER_TIMEOUT_MS,
+        `${FALLBACK_MODEL} ${label} for ${taskId}`,
+      );
+      console.log(`[worker] Task ${taskId}: ${FALLBACK_MODEL} responded in ${((Date.now() - callStart) / 1000).toFixed(1)}s`);
+      const content = typeof response.content === "string"
+        ? response.content
+        : JSON.stringify(response.content);
+      return { content, model: FALLBACK_MODEL };
+    } catch (fallbackError) {
+      const errMsg = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+      console.warn(`[worker] Task ${taskId}: ${FALLBACK_MODEL} attempt ${attempt + 1} failed: ${errMsg}`);
+    }
+  }
+
+  throw new Error(`All models failed for task ${taskId} (primary: ${primaryModelName}, fallback: ${FALLBACK_MODEL})`);
 }
 
 function readFileSafe(filePath: string): string | null {
@@ -289,10 +309,13 @@ ${filesWritten.map((f) => `- ${f}`).join("\n") || "- (none)"}
       console.log(`[worker] Task ${taskId} completed`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(`[worker] Task ${taskId} failed: ${message}`);
+      console.error(`[worker] Task ${taskId} failed (all retries exhausted): ${message}`);
       failedTaskIds.push(taskId);
     }
   }
+
+  // Summary
+  console.log(`[worker] Summary: ${completedTaskIds.length} completed, ${failedTaskIds.length} failed`);
 
   return {
     workerHandoffs,

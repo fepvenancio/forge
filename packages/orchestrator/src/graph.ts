@@ -34,16 +34,30 @@ function routeAfterSubJudges(state: ForgeStateType): string {
   if (state.dependencyDriftTaskIds.length > 0) {
     return "human_escalation_node";
   }
-  const anyFail = state.subJudgeEscalations.length > 0 ||
+
+  // If ALL tasks failed and none completed, escalate
+  if (state.completedTaskIds.length === 0) {
+    return "human_escalation_node";
+  }
+
+  // If some tasks failed but others completed, continue to High Court
+  // High Court will evaluate partial results and decide
+  const anySubJudgeFail = state.subJudgeEscalations.length > 0 ||
     Object.values(state.subJudgeReports).some(reportPath => {
       try {
         const report = JSON.parse(readFileSync(reportPath, "utf8"));
         return report.status === "fail";
       } catch {
-        return true; // If we can't read the report, treat as failure
+        return true;
       }
     });
-  if (anyFail) return "human_escalation_node";
+
+  if (anySubJudgeFail && state.failedTaskIds.length === 0) {
+    // Sub-judge failures on completed tasks → escalate
+    return "human_escalation_node";
+  }
+
+  // Continue pipeline — High Court handles partial results
   return "property_gate_node";
 }
 

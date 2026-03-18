@@ -9,7 +9,7 @@ import { getWorktreePath } from "../worktree/manager.js";
 import type { ForgeStateType } from "../state.js";
 
 const FALLBACK_MODEL = "claude-sonnet-4-6";
-const MODEL_TIMEOUT_MS = 300_000;
+const MODEL_TIMEOUT_MS = 300_000; // 5 minutes — sub-judges do lighter work than workers
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   return Promise.race([
