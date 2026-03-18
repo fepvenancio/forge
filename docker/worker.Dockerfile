@@ -1,10 +1,10 @@
 FROM node:22.14-slim AS base
 
-# Install Python 3.12
+# Install Python 3 and Git
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    python3.12 \
-    python3.12-venv \
+    python3 \
+    python3-venv \
     python3-pip \
     git \
     && rm -rf /var/lib/apt/lists/*

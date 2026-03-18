@@ -9,6 +9,17 @@
   },
   "packageManager": "pnpm@9.15.0",
   "scripts": {
+    "forge": "tsx packages/orchestrator/src/cli.ts",
+    "forge:start": "tsx packages/orchestrator/src/cli.ts start",
+    "forge:stop": "tsx packages/orchestrator/src/cli.ts stop",
+    "forge:run": "tsx packages/orchestrator/src/cli.ts run",
+    "forge:status": "tsx packages/orchestrator/src/cli.ts status",
+    "forge:kill": "tsx packages/orchestrator/src/cli.ts kill",
+    "forge:resume": "tsx packages/orchestrator/src/cli.ts resume",
+    "forge:cancel": "tsx packages/orchestrator/src/cli.ts cancel",
+    "forge:cost": "tsx packages/orchestrator/src/cli.ts cost",
+    "forge:logs": "tsx packages/orchestrator/src/cli.ts logs",
+    "forge:init": "tsx packages/orchestrator/src/cli.ts init",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint"
