@@ -207,7 +207,10 @@ IMPORTANT:
 - Only write files listed in your touch_map.writes
 - Produce complete, working code — not pseudocode
 - Include all imports and dependencies
-- The "content" field must contain the FULL file content (not a diff)`);
+- The "content" field must contain the FULL file content (not a diff)
+- For large files (e.g. markdown documentation), you MUST still use this JSON format. Escape newlines as \\n and quotes as \\" inside JSON strings.
+- Do NOT output raw markdown or text outside the JSON structure
+- If the task is documentation-only (e.g., writing a .md file), still wrap the content in the JSON files array`);
 
       const { content: responseText, model: usedModel } = await invokeWithFallback(
         modelName,
@@ -224,18 +227,63 @@ IMPORTANT:
       // Parse the structured response
       let workerOutput: { files?: Array<{ path: string; content: string }>; handoff?: Record<string, unknown> };
       try {
-        const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, responseText];
+        // Try extracting JSON from markdown fences first, then raw
+        const jsonMatch = responseText.match(/```json\s*([\s\S]*?)```/) || [null, responseText];
         workerOutput = JSON.parse(jsonMatch[1]!.trim());
       } catch {
-        // If parsing fails, treat the entire response as the handoff
-        console.warn(`[worker] Task ${taskId}: could not parse structured output, saving raw response`);
+        // JSON parse failed — try to salvage file content from raw response.
+        // Models often produce the file content directly (especially for .md files)
+        // or wrap it in non-JSON markdown. Extract what we can.
+        console.warn(`[worker] Task ${taskId}: JSON parse failed, attempting raw content extraction`);
+
+        const extractedFiles: Array<{ path: string; content: string }> = [];
+        const writeFiles = taskPlan.touch_map.writes;
+
+        if (writeFiles.length === 1) {
+          // Single file task: treat entire response as the file content.
+          // Strip any leading JSON attempts or markdown wrapper.
+          let rawContent = responseText;
+
+          // Remove wrapping ```markdown ... ``` if present
+          const mdFence = rawContent.match(/^```(?:markdown|md)?\s*\n([\s\S]*?)```\s*$/);
+          if (mdFence) rawContent = mdFence[1];
+
+          // Remove leading JSON garbage if response started with { but isn't valid JSON
+          const firstNewline = rawContent.indexOf('\n');
+          if (rawContent.trimStart().startsWith('{') && firstNewline > 0) {
+            // Check if everything up to first ``` or --- is JSON junk
+            const cleanStart = rawContent.indexOf('---\n');
+            if (cleanStart > 0 && cleanStart < 200) {
+              rawContent = rawContent.slice(cleanStart);
+            }
+          }
+
+          extractedFiles.push({ path: writeFiles[0], content: rawContent.trim() });
+          console.log(`[worker] Task ${taskId}: extracted raw content for ${writeFiles[0]} (${rawContent.trim().length} chars)`);
+        } else {
+          // Multiple files: try to find file markers in the response
+          // Pattern: look for "### path/to/file" or "## path/to/file" followed by content
+          for (const filePath of writeFiles) {
+            const escapedPath = filePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const pattern = new RegExp(`(?:#{2,3}\\s*${escapedPath}|File:\\s*\`?${escapedPath}\`?)\\s*\\n\`\`\`[^\\n]*\\n([\\s\\S]*?)\`\`\``, 'i');
+            const match = responseText.match(pattern);
+            if (match) {
+              extractedFiles.push({ path: filePath, content: match[1].trim() });
+              console.log(`[worker] Task ${taskId}: extracted fenced content for ${filePath} (${match[1].trim().length} chars)`);
+            }
+          }
+        }
+
         workerOutput = {
+          files: extractedFiles.length > 0 ? extractedFiles : undefined,
           handoff: {
-            what_was_done: "Worker produced unstructured output",
-            what_was_not_done: "Structured code generation",
-            concerns: "Output was not valid JSON",
+            what_was_done: extractedFiles.length > 0
+              ? `Extracted ${extractedFiles.length} file(s) from unstructured model output`
+              : "Worker produced unstructured output that could not be parsed",
+            what_was_not_done: "Structured JSON output",
+            concerns: "Output was not valid JSON — content was extracted via fallback parsing",
             security_notes: "None",
-            files_modified: [],
+            files_modified: extractedFiles.map(f => f.path),
           },
         };
       }
