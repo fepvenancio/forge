@@ -87,10 +87,14 @@ export async function highCourtNode(
       };
     }
 
+    // Inject orchestrator-level fields the LLM cannot know
+    if (!report.cycle_id) report.cycle_id = cycleId;
+
     // Validate against schema
     const validation = validate("high-court-report", report);
     if (!validation.valid) {
-      console.error("[high-court] Schema validation failed, escalating to human");
+      console.error(`[high-court] Schema validation failed: ${validation.errors.map(e => `${e.field}: ${e.message}`).join("; ")}`);
+      console.error(`[high-court] Report keys: ${Object.keys(report).join(", ")}`);
       return {
         highCourtDecision: "human_required",
         humanEscalationReason: `High Court report failed schema validation: ${validation.errors.map(e => e.message).join(", ")}`,

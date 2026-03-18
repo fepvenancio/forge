@@ -28,5 +28,26 @@ You fire ONCE per cycle, after all Workers and Sub-Judges have completed.
 8. If architectural problem, security failure, or fixable issues that require human judgement: output human_required with a clear explanation of what needs to be addressed.
 9. If fundamental contradiction between tasks: output abort with explanation.
 
-## Output
-Produce ONLY valid JSON conforming to high-court-report.schema.json.
+## Output format
+Produce ONLY valid JSON (no prose, no markdown fences). The JSON must conform to this exact schema:
+
+```json
+{
+  "decision": "merge" | "human_required" | "abort",
+  "workers_reviewed": ["task-001", "task-002"],
+  "invariant_checks": [
+    {
+      "invariant": "description of the invariant checked",
+      "result": "pass" | "fail",
+      "detail": "optional explanation"
+    }
+  ],
+  "touch_map_violations": [],
+  "merge_order": ["task-001", "task-002"],
+  "revision_instructions": "only if decision is human_required — what needs fixing"
+}
+```
+
+Required fields: `decision`, `workers_reviewed`.
+`decision` must be exactly one of: `merge`, `human_required`, `abort`.
+`workers_reviewed` must list every task ID you reviewed.

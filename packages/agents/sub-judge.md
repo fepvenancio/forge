@@ -34,5 +34,27 @@ Escalate if:
 - The Worker's handoff mentions concerns about architectural impact
 - Touch map violations are detected
 
-## Output
-Produce ONLY valid JSON conforming to sub-judge-report.schema.json.
+## Output format
+Produce ONLY valid JSON (no prose, no markdown fences). The JSON must conform to this exact schema:
+
+```json
+{
+  "task_id": "the task ID you are reviewing",
+  "stage_run_id": "sr-<task_id>",
+  "status": "pass" | "fail" | "warn",
+  "checks": [
+    {
+      "name": "syntax" | "linting" | "build" | "unit_tests" | "coverage" | "schema" | "touch_map" | "property_tests",
+      "result": "pass" | "fail" | "warn" | "skipped",
+      "location": "optional file path",
+      "message": "optional detail"
+    }
+  ],
+  "escalate_to_high_court": false,
+  "escalation_reason": "only if escalating"
+}
+```
+
+Required fields: `task_id`, `stage_run_id`, `status`, `checks`.
+`status` must be exactly one of: `pass`, `fail`, `warn`.
+Each check's `result` must be exactly one of: `pass`, `fail`, `warn`, `skipped`.

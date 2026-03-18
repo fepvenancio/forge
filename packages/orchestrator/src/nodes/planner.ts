@@ -89,6 +89,13 @@ export async function plannerNode(
       };
     }
 
+    // Inject orchestrator-level fields the LLM cannot know
+    if (parsed && typeof parsed === "object") {
+      const plan = parsed as Record<string, unknown>;
+      if (!plan.task_id) plan.task_id = `plan-${cycleId}`;
+      if (!plan.cycle_id) plan.cycle_id = cycleId;
+    }
+
     // Check for PLAN_AMBIGUOUS exit ramp
     if (parsed && typeof parsed === "object" && "status" in parsed && (parsed as Record<string, unknown>).status === "PLAN_AMBIGUOUS") {
       const question = (parsed as Record<string, unknown>).question as string || "Unknown question";
@@ -108,6 +115,8 @@ export async function plannerNode(
     if (!validation.valid) {
       const feedback = formatValidationFeedback("plan", validation.errors);
       console.log(`[planner] Schema validation failed, will retry`);
+      console.log(`[planner] Validation errors:\n${feedback}`);
+      console.log(`[planner] Model output keys: ${Object.keys(parsed as object).join(", ")}`);
 
       return {
         planArtifactId: null,
