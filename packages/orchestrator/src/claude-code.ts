@@ -8,6 +8,10 @@ export interface ClaudeCodeOptions {
   model?: string;
   jsonSchema?: Record<string, unknown>;
   timeoutMs?: number;
+  /** Allow Claude to read/write files in cwd (adds --dangerously-skip-permissions). Required for workers. */
+  dangerouslySkipPermissions?: boolean;
+  /** Max budget in USD for this invocation. */
+  maxBudgetUsd?: number;
 }
 
 export interface ClaudeCodeResult {
@@ -44,9 +48,19 @@ export async function claudeCode(options: ClaudeCodeOptions): Promise<ClaudeCode
     model,
     jsonSchema,
     timeoutMs = 600_000,
+    dangerouslySkipPermissions = false,
+    maxBudgetUsd,
   } = options;
 
   const args = ["-p", "--output-format", "json"];
+
+  if (dangerouslySkipPermissions) {
+    args.push("--dangerously-skip-permissions");
+  }
+
+  if (maxBudgetUsd !== undefined) {
+    args.push("--max-budget-usd", String(maxBudgetUsd));
+  }
 
   if (model) {
     args.push("--model", model);

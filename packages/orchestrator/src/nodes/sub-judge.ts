@@ -37,6 +37,8 @@ export async function subJudgeNode(
         cwd: worktreePath,
         model: "sonnet",
         timeoutMs: 300_000,
+        dangerouslySkipPermissions: true,
+        maxBudgetUsd: 2,
       });
 
       costs.push({ stage: "sub_judge", taskId, costUsd: response.costUsd });

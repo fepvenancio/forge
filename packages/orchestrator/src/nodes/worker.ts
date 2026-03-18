@@ -159,6 +159,8 @@ After making changes, provide a summary of what you did.`);
           cwd: worktreePath,
           model: "sonnet",
           timeoutMs: 600_000,
+          dangerouslySkipPermissions: true,
+          maxBudgetUsd: 5,
         });
 
         costs.push({ stage: "worker", taskId, costUsd: lastResponse.costUsd });
