@@ -1,10 +1,8 @@
-import { ChatAnthropic } from "@langchain/anthropic";
-import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { readFileSync, existsSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadPrompt } from "../prompts/loader.js";
 import { validate } from "../gates/validator.js";
-import { getModelForRole } from "../models/selector.js";
+import { claudeCode } from "../claude-code.js";
 import type { ForgeStateType } from "../state.js";
 
 /**
@@ -21,8 +19,6 @@ export async function highCourtNode(
 
   console.log(`[high-court] Reviewing cycle ${cycleId} (${completedTaskIds.length} workers)`);
 
-  const modelName = getModelForRole("high_court");
-  const model = new ChatAnthropic({ model: modelName, temperature: 0 });
   const systemPrompt = loadPrompt("high-court");
 
   // Build context — HANDOFF-FIRST strategy
@@ -64,14 +60,20 @@ export async function highCourtNode(
   }
 
   try {
-    const response = await model.invoke([
-      new SystemMessage(systemPrompt),
-      new HumanMessage(contextParts.join("\n\n---\n\n")),
-    ]);
+    const response = await claudeCode({
+      prompt: contextParts.join("\n\n---\n\n"),
+      systemPrompt,
+      model: "opus",
+      cwd: projectPath,
+      timeoutMs: 600_000,
+    });
 
-    const responseText = typeof response.content === "string"
-      ? response.content
-      : JSON.stringify(response.content);
+    const costs: Array<{ stage: string; taskId?: string; costUsd: number }> = [
+      ...(state.claudeCodeCosts || []),
+      { stage: "high_court", costUsd: response.costUsd },
+    ];
+
+    const responseText = response.result;
 
     // Parse response
     let report: Record<string, unknown>;
@@ -83,6 +85,7 @@ export async function highCourtNode(
       return {
         highCourtDecision: "human_required",
         humanEscalationReason: "High Court output could not be parsed as JSON",
+        claudeCodeCosts: costs,
         currentStage: "high_court",
       };
     }
@@ -98,6 +101,7 @@ export async function highCourtNode(
       return {
         highCourtDecision: "human_required",
         humanEscalationReason: `High Court report failed schema validation: ${validation.errors.map(e => e.message).join(", ")}`,
+        claudeCodeCosts: costs,
         currentStage: "high_court",
       };
     }
@@ -117,6 +121,7 @@ export async function highCourtNode(
       highCourtArtifactId: `high-court-${cycleId}`,
       highCourtDecision: decision,
       mergeOrder,
+      claudeCodeCosts: costs,
       currentStage: "high_court",
       humanEscalationReason: decision === "human_required"
         ? (report.revision_instructions as string) || "High Court requires human review"

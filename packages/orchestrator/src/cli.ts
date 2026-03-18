@@ -6,7 +6,6 @@ import { execSync, spawn } from "node:child_process";
 import { v4 as uuidv4 } from "uuid";
 import { buildForgeGraph } from "./graph.js";
 import * as queries from "./dolt/queries.js";
-import { selectPlannerModel } from "./models/selector.js";
 import { SCRIPTS_DIR } from "./utils/paths.js";
 
 const PID_DIR = resolve(process.cwd(), ".forge", "pids");
@@ -126,11 +125,11 @@ async function cmdRun() {
 
   const projectPath = process.cwd();
   const cycleId = uuidv4();
-  const plannerModel = selectPlannerModel(projectPath);
+  const plannerModel = "claude-code:opus";
 
   console.log(`Starting cycle ${cycleId}`);
   console.log(`  PRP: ${resolvedPath}`);
-  console.log(`  Planner model: ${plannerModel}`);
+  console.log(`  Engine: Claude Code CLI`);
 
   // Persist cycle to Dolt
   try {
@@ -174,6 +173,7 @@ async function cmdRun() {
       highCourtArtifactId: null,
       highCourtDecision: null,
       mergeOrder: [],
+      claudeCodeCosts: [],
       costArtifactId: null,
       totalCostUsd: 0,
       costExceedsCap: false,

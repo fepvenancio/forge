@@ -1,43 +1,9 @@
-import { ChatAnthropic } from "@langchain/anthropic";
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { HumanMessage, SystemMessage, type BaseMessage } from "@langchain/core/messages";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadPrompt } from "../prompts/loader.js";
-import { getModelForRole } from "../models/selector.js";
 import { getWorktreePath } from "../worktree/manager.js";
+import { claudeCode } from "../claude-code.js";
 import type { ForgeStateType } from "../state.js";
-
-const FALLBACK_MODEL = "claude-sonnet-4-6";
-const MODEL_TIMEOUT_MS = 300_000; // 5 minutes — sub-judges do lighter work than workers
-
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms),
-    ),
-  ]);
-}
-
-async function invokeWithFallback(
-  primaryModelName: string,
-  messages: BaseMessage[],
-  taskId: string,
-): Promise<string> {
-  try {
-    const model = primaryModelName.startsWith("claude")
-      ? new ChatAnthropic({ model: primaryModelName, temperature: 0 })
-      : new ChatGoogleGenerativeAI({ model: primaryModelName, temperature: 0 });
-    const response = await withTimeout(model.invoke(messages), MODEL_TIMEOUT_MS, `${primaryModelName} for ${taskId}`);
-    return typeof response.content === "string" ? response.content : JSON.stringify(response.content);
-  } catch (err) {
-    console.warn(`[sub-judge] Task ${taskId}: ${primaryModelName} failed, falling back to ${FALLBACK_MODEL}`);
-    const fallback = new ChatAnthropic({ model: FALLBACK_MODEL, temperature: 0 });
-    const response = await withTimeout(fallback.invoke(messages), MODEL_TIMEOUT_MS, `${FALLBACK_MODEL} for ${taskId}`);
-    return typeof response.content === "string" ? response.content : JSON.stringify(response.content);
-  }
-}
 
 export async function subJudgeNode(
   state: ForgeStateType,
@@ -46,8 +12,8 @@ export async function subJudgeNode(
 
   const subJudgeReports: Record<string, string> = { ...state.subJudgeReports };
   const subJudgeEscalations: string[] = [...state.subJudgeEscalations];
+  const costs: Array<{ stage: string; taskId?: string; costUsd: number }> = [...(state.claudeCodeCosts || [])];
 
-  const modelName = getModelForRole("sub_judge");
   const systemPrompt = loadPrompt("sub-judge");
 
   for (const taskId of taskIds) {
@@ -56,24 +22,29 @@ export async function subJudgeNode(
     try {
       const worktreePath = getWorktreePath(projectPath, taskId);
 
-      const contextParts: string[] = [];
-      contextParts.push(`Task ID: ${taskId}`);
-      contextParts.push(`Branch: ${workerBranches[taskId] || "unknown"}`);
-      contextParts.push(`Worktree: ${worktreePath}`);
+      const prompt = [
+        `Task ID: ${taskId}`,
+        `Branch: ${workerBranches[taskId] || "unknown"}`,
+        `Worktree: ${worktreePath}`,
+        "",
+        "Review the code changes in this worktree. Use `git diff` and read the modified files to assess quality.",
+        "Respond with a JSON report containing: task_id, stage_run_id, status (pass/fail), checks array, and escalate_to_high_court boolean.",
+      ].join("\n\n");
 
-      const responseText = await invokeWithFallback(
-        modelName,
-        [
-          new SystemMessage(systemPrompt),
-          new HumanMessage(contextParts.join("\n\n")),
-        ],
-        taskId,
-      );
+      const response = await claudeCode({
+        prompt,
+        systemPrompt,
+        cwd: worktreePath,
+        model: "sonnet",
+        timeoutMs: 300_000,
+      });
+
+      costs.push({ stage: "sub_judge", taskId, costUsd: response.costUsd });
 
       // Parse and validate report
       let report: Record<string, unknown>;
       try {
-        const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, responseText];
+        const jsonMatch = response.result.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, response.result];
         report = JSON.parse(jsonMatch[1]!.trim());
       } catch {
         report = {
@@ -107,6 +78,7 @@ export async function subJudgeNode(
   return {
     subJudgeReports,
     subJudgeEscalations,
+    claudeCodeCosts: costs,
     currentStage: "sub_judge",
   };
 }

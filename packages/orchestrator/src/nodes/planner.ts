@@ -1,11 +1,9 @@
-import { ChatAnthropic } from "@langchain/anthropic";
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { resolve, relative, extname } from "node:path";
 import { loadPrompt } from "../prompts/loader.js";
 import { validate, formatValidationFeedback } from "../gates/validator.js";
-import { selectPlannerModel, countLOC, countFlows } from "../models/selector.js";
+import { countLOC, countFlows } from "../models/selector.js";
+import { claudeCode } from "../claude-code.js";
 import type { ForgeStateType } from "../state.js";
 
 const TREE_EXCLUDED_DIRS = new Set([
@@ -58,13 +56,6 @@ function generateFileTree(rootPath: string, maxDepth = 4, maxEntries = 500): str
   return entries.join("\n");
 }
 
-function createModelForPlanner(modelName: string) {
-  if (modelName.startsWith("claude")) {
-    return new ChatAnthropic({ model: modelName, temperature: 0 });
-  }
-  return new ChatGoogleGenerativeAI({ model: modelName, temperature: 0 });
-}
-
 export async function plannerNode(
   state: ForgeStateType,
 ): Promise<Partial<ForgeStateType>> {
@@ -72,11 +63,7 @@ export async function plannerNode(
 
   console.log(`[planner] Starting planning (attempt ${plannerRetries + 1}/${maxPlannerRetries})`);
 
-  // Select model based on codebase size
-  const modelName = selectPlannerModel(projectPath);
-  const model = createModelForPlanner(modelName);
-
-  // Load system prompt via loader (never fs.readFileSync directly)
+  // Load system prompt via loader
   const systemPrompt = loadPrompt("planner");
 
   // Build context for the planner
@@ -121,14 +108,15 @@ export async function plannerNode(
   const userMessage = contextParts.join("\n\n---\n\n");
 
   try {
-    const response = await model.invoke([
-      new SystemMessage(systemPrompt),
-      new HumanMessage(userMessage),
-    ]);
+    const response = await claudeCode({
+      prompt: userMessage,
+      systemPrompt,
+      model: "opus",
+      cwd: projectPath,
+      timeoutMs: 600_000,
+    });
 
-    const responseText = typeof response.content === "string"
-      ? response.content
-      : JSON.stringify(response.content);
+    const responseText = response.result;
 
     // Parse JSON from response (may have markdown code fences)
     let parsed: unknown;
@@ -138,9 +126,13 @@ export async function plannerNode(
     } catch {
       return {
         planArtifactId: null,
-        plannerModel: modelName,
+        plannerModel: "claude-code:opus",
         plannerRetries: plannerRetries + 1,
         planAmbiguousQuestion: null,
+        claudeCodeCosts: [
+          ...(state.claudeCodeCosts || []),
+          { stage: "planner", costUsd: response.costUsd },
+        ],
         errors: [
           ...state.errors,
           { stage: "planner", message: `Failed to parse planner output as JSON: ${responseText.slice(0, 500)}`, ts: Date.now() },
@@ -162,10 +154,14 @@ export async function plannerNode(
 
       return {
         planArtifactId: null,
-        plannerModel: modelName,
+        plannerModel: "claude-code:opus",
         plannerRetries: plannerRetries,
         planAmbiguousQuestion: question,
         humanEscalationReason: `Planner needs clarification: ${question}`,
+        claudeCodeCosts: [
+          ...(state.claudeCodeCosts || []),
+          { stage: "planner", costUsd: response.costUsd },
+        ],
       };
     }
 
@@ -179,9 +175,13 @@ export async function plannerNode(
 
       return {
         planArtifactId: null,
-        plannerModel: modelName,
+        plannerModel: "claude-code:opus",
         plannerRetries: plannerRetries + 1,
         planAmbiguousQuestion: null,
+        claudeCodeCosts: [
+          ...(state.claudeCodeCosts || []),
+          { stage: "planner", costUsd: response.costUsd },
+        ],
         errors: [
           ...state.errors,
           { stage: "planner", message: feedback, ts: Date.now() },
@@ -199,10 +199,14 @@ export async function plannerNode(
     return {
       planData: parsed as Record<string, unknown>,
       planArtifactId: artifactId,
-      plannerModel: modelName,
+      plannerModel: "claude-code:opus",
       plannerRetries: plannerRetries,
       planAmbiguousQuestion: null,
       taskIds,
+      claudeCodeCosts: [
+        ...(state.claudeCodeCosts || []),
+        { stage: "planner", costUsd: response.costUsd },
+      ],
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -210,7 +214,7 @@ export async function plannerNode(
 
     return {
       planArtifactId: null,
-      plannerModel: modelName,
+      plannerModel: "claude-code:opus",
       plannerRetries: plannerRetries + 1,
       planAmbiguousQuestion: null,
       errors: [

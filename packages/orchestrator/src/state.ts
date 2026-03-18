@@ -41,6 +41,7 @@ export const ForgeState = Annotation.Root({
   mergeOrder: Annotation<string[]>,
 
   // Cost
+  claudeCodeCosts: Annotation<Array<{ stage: string; taskId?: string; costUsd: number }>>,
   costArtifactId: Annotation<string | null>,
   totalCostUsd: Annotation<number>,
   costExceedsCap: Annotation<boolean>,

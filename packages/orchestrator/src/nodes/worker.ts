@@ -1,12 +1,9 @@
-import { ChatAnthropic } from "@langchain/anthropic";
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { readFileSync, existsSync, writeFileSync, mkdirSync } from "node:fs";
 import { execSync } from "node:child_process";
-import { resolve, dirname } from "node:path";
+import { resolve } from "node:path";
 import { loadPrompt } from "../prompts/loader.js";
-import { selectWorkerModel } from "../models/selector.js";
 import { getWorktreePath } from "../worktree/manager.js";
+import { claudeCode } from "../claude-code.js";
 import type { ForgeStateType } from "../state.js";
 
 interface TaskPlan {
@@ -21,87 +18,54 @@ interface TaskPlan {
   relevant_flows?: string[];
 }
 
-const FALLBACK_MODEL = "claude-sonnet-4-6";
-const WORKER_TIMEOUT_MS = 600_000; // 10 minutes — workers read large files and generate full rewrites
-const MAX_RETRIES = 1; // retry once before marking as failed
-
-function createModelForWorker(modelName: string) {
-  if (modelName.startsWith("claude")) {
-    return new ChatAnthropic({ model: modelName, temperature: 0 });
-  }
-  return new ChatGoogleGenerativeAI({ model: modelName, temperature: 0 });
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  let timer: ReturnType<typeof setTimeout>;
-  return Promise.race([
-    promise.finally(() => clearTimeout(timer)),
-    new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms);
-    }),
-  ]);
-}
-
-/**
- * Invoke model with automatic fallback to Claude if primary model fails or times out.
- * Retries the fallback once on failure before giving up.
- */
-async function invokeWithFallback(
-  primaryModelName: string,
-  messages: Array<import("@langchain/core/messages").BaseMessage>,
-  taskId: string,
-): Promise<{ content: string; model: string }> {
-  // Try primary model
-  try {
-    console.log(`[worker] Task ${taskId}: calling ${primaryModelName}...`);
-    const callStart = Date.now();
-    const model = createModelForWorker(primaryModelName);
-    const response = await withTimeout(
-      model.invoke(messages),
-      WORKER_TIMEOUT_MS,
-      `${primaryModelName} for ${taskId}`,
-    );
-    console.log(`[worker] Task ${taskId}: ${primaryModelName} responded in ${((Date.now() - callStart) / 1000).toFixed(1)}s`);
-    const content = typeof response.content === "string"
-      ? response.content
-      : JSON.stringify(response.content);
-    return { content, model: primaryModelName };
-  } catch (primaryError) {
-    const errMsg = primaryError instanceof Error ? primaryError.message : String(primaryError);
-    console.warn(`[worker] Task ${taskId}: ${primaryModelName} failed: ${errMsg}`);
-  }
-
-  // Fallback to Claude with retry
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const label = attempt === 0 ? "fallback" : `fallback retry ${attempt}`;
-      console.log(`[worker] Task ${taskId}: ${label} → ${FALLBACK_MODEL}`);
-      const callStart = Date.now();
-      const fallback = new ChatAnthropic({ model: FALLBACK_MODEL, temperature: 0 });
-      const response = await withTimeout(
-        fallback.invoke(messages),
-        WORKER_TIMEOUT_MS,
-        `${FALLBACK_MODEL} ${label} for ${taskId}`,
-      );
-      console.log(`[worker] Task ${taskId}: ${FALLBACK_MODEL} responded in ${((Date.now() - callStart) / 1000).toFixed(1)}s`);
-      const content = typeof response.content === "string"
-        ? response.content
-        : JSON.stringify(response.content);
-      return { content, model: FALLBACK_MODEL };
-    } catch (fallbackError) {
-      const errMsg = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
-      console.warn(`[worker] Task ${taskId}: ${FALLBACK_MODEL} attempt ${attempt + 1} failed: ${errMsg}`);
-    }
-  }
-
-  throw new Error(`All models failed for task ${taskId} (primary: ${primaryModelName}, fallback: ${FALLBACK_MODEL})`);
-}
+const MAX_WORKER_ATTEMPTS = 2;
 
 function readFileSafe(filePath: string): string | null {
   try {
     if (existsSync(filePath)) return readFileSync(filePath, "utf8");
   } catch { /* skip unreadable */ }
   return null;
+}
+
+/**
+ * Get list of changed files in a worktree via git.
+ */
+function getChangedFiles(worktreePath: string): string[] {
+  try {
+    const modified = execSync("git diff --name-only", { cwd: worktreePath, encoding: "utf8" }).trim();
+    const staged = execSync("git diff --cached --name-only", { cwd: worktreePath, encoding: "utf8" }).trim();
+    const untracked = execSync("git ls-files --others --exclude-standard", { cwd: worktreePath, encoding: "utf8" }).trim();
+
+    const all = new Set<string>();
+    for (const line of [...modified.split("\n"), ...staged.split("\n"), ...untracked.split("\n")]) {
+      if (line.trim()) all.add(line.trim());
+    }
+    return [...all];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Revert files that are not in the allowed writes list.
+ */
+function revertUnauthorizedFiles(worktreePath: string, allowedWrites: string[], changedFiles: string[]): string[] {
+  const reverted: string[] = [];
+  for (const file of changedFiles) {
+    if (!allowedWrites.includes(file)) {
+      try {
+        execSync(`git checkout -- "${file}"`, { cwd: worktreePath, encoding: "utf8" });
+        reverted.push(file);
+      } catch {
+        // File might be untracked — remove it
+        try {
+          execSync(`rm -f "${file}"`, { cwd: worktreePath, encoding: "utf8" });
+          reverted.push(file);
+        } catch { /* ignore */ }
+      }
+    }
+  }
+  return reverted;
 }
 
 export async function workerNode(
@@ -114,8 +78,8 @@ export async function workerNode(
   const workerPrUrls: Record<string, string> = { ...state.workerPrUrls };
   const completedTaskIds: string[] = [...state.completedTaskIds];
   const failedTaskIds: string[] = [...state.failedTaskIds];
+  const costs: Array<{ stage: string; taskId?: string; costUsd: number }> = [...(state.claudeCodeCosts || [])];
 
-  const modelName = selectWorkerModel();
   const systemPrompt = loadPrompt("worker");
 
   // Extract task plans from planData
@@ -135,7 +99,7 @@ export async function workerNode(
         continue;
       }
 
-      // Build rich context for worker
+      // Build prompt for Claude Code — it reads files directly in the worktree
       const contextParts: string[] = [];
 
       // Task details from plan
@@ -144,8 +108,7 @@ export async function workerNode(
 - **Title**: ${taskPlan.title}
 - **Layer**: ${taskPlan.layer}
 - **Complexity**: ${taskPlan.complexity}
-- **Branch**: ${workerBranches[taskId] || "unknown"}
-- **Worktree**: ${worktreePath}`);
+- **Branch**: ${workerBranches[taskId] || "unknown"}`);
 
       // Acceptance criteria
       contextParts.push(`## Acceptance Criteria
@@ -156,18 +119,6 @@ ${taskPlan.acceptance_criteria.map((c) => `- ${c}`).join("\n")}`);
 **Files you may READ**: ${taskPlan.touch_map.reads.join(", ") || "(none)"}
 **Files you may WRITE**: ${taskPlan.touch_map.writes.join(", ") || "(none)"}
 **Files you MUST NOT change**: ${taskPlan.must_not_change.join(", ") || "(none)"}`);
-
-      // Read source files from touch map (reads + writes)
-      const allFiles = [...new Set([...taskPlan.touch_map.reads, ...taskPlan.touch_map.writes])];
-      contextParts.push("## Current File Contents");
-      for (const file of allFiles) {
-        const content = readFileSafe(resolve(worktreePath, file));
-        if (content !== null) {
-          contextParts.push(`### ${file}\n\`\`\`\n${content}\n\`\`\``);
-        } else {
-          contextParts.push(`### ${file}\n(file does not exist yet — you will create it)`);
-        }
-      }
 
       // Read PRP for full context
       const prpContent = readFileSafe(state.prpRef);
@@ -183,150 +134,62 @@ ${taskPlan.acceptance_criteria.map((c) => `- ${c}`).join("\n")}`);
         }
       }
 
-      // Instructions for structured output
-      contextParts.push(`## Output Instructions
-You MUST respond with valid JSON (no prose, no markdown fences) in this exact format:
-
-{
-  "files": [
-    {
-      "path": "relative/file/path.ts",
-      "content": "full file content as a string"
-    }
-  ],
-  "handoff": {
-    "what_was_done": "description of changes made",
-    "what_was_not_done": "scope deliberately excluded",
-    "concerns": "any edge cases or concerns discovered",
-    "security_notes": "any security items flagged",
-    "files_modified": ["list", "of", "files", "modified"]
-  }
-}
-
-IMPORTANT:
-- Only write files listed in your touch_map.writes
-- Produce complete, working code — not pseudocode
-- Include all imports and dependencies
-- The "content" field must contain the FULL file content (not a diff)
-- For large files (e.g. markdown documentation), you MUST still use this JSON format. Escape newlines as \\n and quotes as \\" inside JSON strings.
-- Do NOT output raw markdown or text outside the JSON structure
-- If the task is documentation-only (e.g., writing a .md file), still wrap the content in the JSON files array`);
+      // Instructions — Claude Code reads/writes files directly
+      contextParts.push(`## Instructions
+You are working in a git worktree at the current directory.
+Read the files you need to understand, then make the required changes by writing files directly.
+Only modify files listed in the touch map writes. Do not modify files in must_not_change.
+Produce complete, working code — not pseudocode.
+After making changes, provide a summary of what you did.`);
 
       // Worker invocation with retry-on-zero-files
-      const MAX_WORKER_ATTEMPTS = 2;
-      let workerOutput: { files?: Array<{ path: string; content: string }>; handoff?: Record<string, unknown> } = {};
-      let usedModel = modelName;
+      let lastResponse: Awaited<ReturnType<typeof claudeCode>> | null = null;
 
       for (let attempt = 0; attempt < MAX_WORKER_ATTEMPTS; attempt++) {
-        const messages = [
-          new SystemMessage(systemPrompt),
-          new HumanMessage(
-            attempt === 0
-              ? contextParts.join("\n\n---\n\n")
-              : contextParts.join("\n\n---\n\n") + "\n\n---\n\n## CRITICAL RETRY NOTICE\nYour previous response was NOT valid JSON and produced ZERO files. You MUST respond with a JSON object containing a \"files\" array and a \"handoff\" object. Do NOT write prose or markdown. Start your response with { and end with }.",
-          ),
-        ];
+        const prompt = attempt === 0
+          ? contextParts.join("\n\n---\n\n")
+          : contextParts.join("\n\n---\n\n") + "\n\n---\n\n## CRITICAL RETRY NOTICE\nYour previous attempt produced ZERO file changes. Please read the relevant files and make the required modifications.";
 
-        const result = await invokeWithFallback(modelName, messages, taskId);
-        usedModel = result.model;
-        if (usedModel !== modelName) {
-          console.log(`[worker] Task ${taskId}: completed via fallback model ${usedModel}`);
-        }
+        console.log(`[worker] Task ${taskId}: calling claude -p (attempt ${attempt + 1}/${MAX_WORKER_ATTEMPTS})...`);
+        const callStart = Date.now();
 
-        // Parse the structured response
-        try {
-          const jsonMatch = result.content.match(/```json\s*([\s\S]*?)```/) || [null, result.content];
-          workerOutput = JSON.parse(jsonMatch[1]!.trim());
-        } catch {
-        // JSON parse failed — try to salvage file content from raw response.
-        // Models often produce the file content directly (especially for .md files)
-        // or wrap it in non-JSON markdown. Extract what we can.
-        console.warn(`[worker] Task ${taskId}: JSON parse failed, attempting raw content extraction`);
+        lastResponse = await claudeCode({
+          prompt,
+          systemPrompt,
+          cwd: worktreePath,
+          model: "sonnet",
+          timeoutMs: 600_000,
+        });
 
-        const extractedFiles: Array<{ path: string; content: string }> = [];
-        const writeFiles = taskPlan.touch_map.writes;
+        costs.push({ stage: "worker", taskId, costUsd: lastResponse.costUsd });
 
-        if (writeFiles.length === 1) {
-          // Single file task: treat entire response as the file content.
-          // Strip any leading JSON attempts or markdown wrapper.
-          let rawContent = result.content;
+        console.log(`[worker] Task ${taskId}: claude responded in ${((Date.now() - callStart) / 1000).toFixed(1)}s`);
 
-          // Remove wrapping ```markdown ... ``` if present
-          const mdFence = rawContent.match(/^```(?:markdown|md)?\s*\n([\s\S]*?)```\s*$/);
-          if (mdFence) rawContent = mdFence[1];
-
-          // Remove leading JSON garbage if response started with { but isn't valid JSON
-          const firstNewline = rawContent.indexOf('\n');
-          if (rawContent.trimStart().startsWith('{') && firstNewline > 0) {
-            // Check if everything up to first ``` or --- is JSON junk
-            const cleanStart = rawContent.indexOf('---\n');
-            if (cleanStart > 0 && cleanStart < 200) {
-              rawContent = rawContent.slice(cleanStart);
-            }
-          }
-
-          extractedFiles.push({ path: writeFiles[0], content: rawContent.trim() });
-          console.log(`[worker] Task ${taskId}: extracted raw content for ${writeFiles[0]} (${rawContent.trim().length} chars)`);
-        } else {
-          // Multiple files: try to find file markers in the response
-          // Pattern: look for "### path/to/file" or "## path/to/file" followed by content
-          for (const filePath of writeFiles) {
-            const escapedPath = filePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const pattern = new RegExp(`(?:#{2,3}\\s*${escapedPath}|File:\\s*\`?${escapedPath}\`?)\\s*\\n\`\`\`[^\\n]*\\n([\\s\\S]*?)\`\`\``, 'i');
-            const match = result.content.match(pattern);
-            if (match) {
-              extractedFiles.push({ path: filePath, content: match[1].trim() });
-              console.log(`[worker] Task ${taskId}: extracted fenced content for ${filePath} (${match[1].trim().length} chars)`);
-            }
-          }
-        }
-
-        workerOutput = {
-          files: extractedFiles.length > 0 ? extractedFiles : undefined,
-          handoff: {
-            what_was_done: extractedFiles.length > 0
-              ? `Extracted ${extractedFiles.length} file(s) from unstructured model output`
-              : "Worker produced unstructured output that could not be parsed",
-            what_was_not_done: "Structured JSON output",
-            concerns: "Output was not valid JSON — content was extracted via fallback parsing",
-            security_notes: "None",
-            files_modified: extractedFiles.map(f => f.path),
-          },
-        };
-        }
-
-        // Check if we got files — if yes, break; if no and we can retry, loop
-        const hasFiles = workerOutput.files && workerOutput.files.length > 0;
-        if (hasFiles || attempt === MAX_WORKER_ATTEMPTS - 1) {
-          if (!hasFiles && attempt === MAX_WORKER_ATTEMPTS - 1) {
-            console.warn(`[worker] Task ${taskId}: no files produced after ${MAX_WORKER_ATTEMPTS} attempts`);
+        // Check what files changed
+        const changedFiles = getChangedFiles(worktreePath);
+        if (changedFiles.length > 0 || attempt === MAX_WORKER_ATTEMPTS - 1) {
+          if (changedFiles.length === 0 && attempt === MAX_WORKER_ATTEMPTS - 1) {
+            console.warn(`[worker] Task ${taskId}: no files changed after ${MAX_WORKER_ATTEMPTS} attempts`);
           }
           break;
         }
-        console.log(`[worker] Task ${taskId}: 0 files produced, retrying (attempt ${attempt + 2}/${MAX_WORKER_ATTEMPTS})...`);
+        console.log(`[worker] Task ${taskId}: 0 files changed, retrying (attempt ${attempt + 2}/${MAX_WORKER_ATTEMPTS})...`);
       }
 
-      // Write files to worktree
-      const filesWritten: string[] = [];
-      if (workerOutput.files && Array.isArray(workerOutput.files)) {
-        for (const file of workerOutput.files) {
-          // Validate file is in touch_map.writes
-          if (!taskPlan.touch_map.writes.includes(file.path)) {
-            console.warn(`[worker] Task ${taskId}: skipping ${file.path} (not in touch_map.writes)`);
-            continue;
-          }
-          const fullPath = resolve(worktreePath, file.path);
-          mkdirSync(dirname(fullPath), { recursive: true });
-          writeFileSync(fullPath, file.content);
-          filesWritten.push(file.path);
-        }
-        console.log(`[worker] Task ${taskId}: wrote ${filesWritten.length} files`);
+      // Validate changes against touch_map.writes — revert unauthorized files
+      const changedFiles = getChangedFiles(worktreePath);
+      const reverted = revertUnauthorizedFiles(worktreePath, taskPlan.touch_map.writes, changedFiles);
+      if (reverted.length > 0) {
+        console.warn(`[worker] Task ${taskId}: reverted ${reverted.length} unauthorized files: ${reverted.join(", ")}`);
       }
+
+      // Get final list of allowed changed files
+      const allowedChanges = changedFiles.filter(f => taskPlan.touch_map.writes.includes(f));
 
       // Commit changes in worktree
-      if (filesWritten.length > 0) {
+      if (allowedChanges.length > 0) {
         try {
-          execSync(`git add ${filesWritten.map(f => `"${f}"`).join(" ")}`, {
+          execSync(`git add ${allowedChanges.map(f => `"${f}"`).join(" ")}`, {
             cwd: worktreePath,
             encoding: "utf8",
           });
@@ -334,37 +197,30 @@ IMPORTANT:
             `git commit -m "forge(${taskId}): ${taskPlan.title}"`,
             { cwd: worktreePath, encoding: "utf8" },
           );
-          console.log(`[worker] Task ${taskId}: committed to ${workerBranches[taskId]}`);
+          console.log(`[worker] Task ${taskId}: committed ${allowedChanges.length} files to ${workerBranches[taskId]}`);
         } catch (e) {
           console.warn(`[worker] Task ${taskId}: git commit failed: ${e instanceof Error ? e.message : e}`);
         }
       }
 
-      // Write handoff document
+      // Write handoff document using Claude Code's natural summary
       const handoffDir = resolve(worktreePath, ".forge", "handoffs");
       mkdirSync(handoffDir, { recursive: true });
       const handoffPath = resolve(handoffDir, `${taskId}.md`);
 
-      const handoff = workerOutput.handoff || {};
       const handoffContent = `# Worker Handoff — ${taskId}
 
 ## Task
 ${taskPlan.title}
 
-## What was done
-${handoff.what_was_done || "No description provided"}
-
-## What was NOT done
-${handoff.what_was_not_done || "Nothing excluded"}
-
-## Concerns / Edge Cases
-${handoff.concerns || "None"}
-
-## Security Notes
-${handoff.security_notes || "None"}
+## Summary
+${lastResponse?.result || "No summary provided"}
 
 ## Files Modified
-${filesWritten.map((f) => `- ${f}`).join("\n") || "- (none)"}
+${allowedChanges.map((f) => `- ${f}`).join("\n") || "- (none)"}
+
+## Reverted Files
+${reverted.length > 0 ? reverted.map((f) => `- ${f} (not in touch_map.writes)`).join("\n") : "- (none)"}
 `;
       writeFileSync(handoffPath, handoffContent);
 
@@ -375,7 +231,7 @@ ${filesWritten.map((f) => `- ${f}`).join("\n") || "- (none)"}
       console.log(`[worker] Task ${taskId} completed`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(`[worker] Task ${taskId} failed (all retries exhausted): ${message}`);
+      console.error(`[worker] Task ${taskId} failed: ${message}`);
       failedTaskIds.push(taskId);
     }
   }
@@ -389,6 +245,7 @@ ${filesWritten.map((f) => `- ${f}`).join("\n") || "- (none)"}
     workerPrUrls,
     completedTaskIds,
     failedTaskIds,
+    claudeCodeCosts: costs,
     currentStage: "worker",
   };
 }

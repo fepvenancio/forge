@@ -3,25 +3,8 @@ import { resolve, extname } from "node:path";
 import { FORGE_CONFIG_PATH } from "../utils/paths.js";
 
 interface ForgeConfig {
-  planner: {
-    model_threshold_loc: number;
-    model_below_threshold: string;
-    model_above_threshold: string;
-  };
   workers: {
-    default_model: string;
-    protocol_model: string;
     max_parallel: number;
-  };
-  sub_judge: {
-    model: string;
-  };
-  high_court: {
-    model: string;
-  };
-  librarian: {
-    model: string;
-    batch_threshold: number;
   };
 }
 
@@ -108,50 +91,6 @@ export function countFlows(repoPath: string): number {
     return readdirSync(flowsDir).filter((f) => f.endsWith(".md")).length;
   } catch {
     return 0;
-  }
-}
-
-/**
- * Select the appropriate Planner model based on codebase size.
- */
-export function selectPlannerModel(repoPath: string): string {
-  const config = loadConfig();
-  const loc = countLOC(repoPath);
-
-  if (loc < config.planner.model_threshold_loc) {
-    return config.planner.model_below_threshold;
-  }
-  return config.planner.model_above_threshold;
-}
-
-/**
- * Select the appropriate Worker model based on project type.
- * "protocol" projects (Solidity, Cairo, financial) use the protocol model.
- */
-export function selectWorkerModel(
-  projectType: "default" | "protocol" = "default",
-): string {
-  const config = loadConfig();
-  if (projectType === "protocol") {
-    return config.workers.protocol_model;
-  }
-  return config.workers.default_model;
-}
-
-/**
- * Get the model for a specific role from config.
- */
-export function getModelForRole(
-  role: "sub_judge" | "high_court" | "librarian",
-): string {
-  const config = loadConfig();
-  switch (role) {
-    case "sub_judge":
-      return config.sub_judge.model;
-    case "high_court":
-      return config.high_court.model;
-    case "librarian":
-      return config.librarian.model;
   }
 }
 
