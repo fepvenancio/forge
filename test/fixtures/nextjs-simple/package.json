@@ -1,0 +1,10 @@
+{
+  "name": "nextjs-simple-fixture",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "echo 'build ok'",
+    "test": "echo 'test ok'",
+    "lint": "echo 'lint ok'"
+  }
+}
