@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from "uuid";
 import { buildForgeGraph } from "./graph.js";
 import * as queries from "./dolt/queries.js";
 import { selectPlannerModel } from "./models/selector.js";
+import { SCRIPTS_DIR } from "./utils/paths.js";
 
 const PID_DIR = resolve(process.cwd(), ".forge", "pids");
 
@@ -280,7 +281,7 @@ async function cmdInit() {
   const template = args[templateIdx + 1];
   const targetPath = args.find((a, i) => i !== templateIdx && i !== templateIdx + 1) || ".";
 
-  const scriptPath = resolve(import.meta.dirname, "../../../scripts/init-project.sh");
+  const scriptPath = resolve(SCRIPTS_DIR, "init-project.sh");
   execSync(`bash "${scriptPath}" --template "${template}" "${resolve(process.cwd(), targetPath)}"`, {
     stdio: "inherit",
   });

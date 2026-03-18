@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { resolve, extname } from "node:path";
+import { FORGE_CONFIG_PATH } from "../utils/paths.js";
 
 interface ForgeConfig {
   planner: {
@@ -28,7 +29,7 @@ let cachedConfig: ForgeConfig | null = null;
 
 function loadConfig(): ForgeConfig {
   if (cachedConfig) return cachedConfig;
-  const configPath = resolve(import.meta.dirname, "../../../../forge.config.json");
+  const configPath = FORGE_CONFIG_PATH;
   cachedConfig = JSON.parse(readFileSync(configPath, "utf8")) as ForgeConfig;
   return cachedConfig;
 }

@@ -2,8 +2,7 @@ import AjvModule, { type ErrorObject, type ValidateFunction } from "ajv";
 import addFormatsModule from "ajv-formats";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve, basename } from "node:path";
-
-const SCHEMAS_DIR = resolve(import.meta.dirname, "../../../../packages/schemas");
+import { SCHEMAS_DIR } from "../utils/paths.js";
 
 export interface ValidationResult {
   valid: boolean;

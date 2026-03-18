@@ -12,5 +12,9 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint"
+  },
+  "devDependencies": {
+    "dotenv": "^17.3.1",
+    "tsx": "^4.21.0"
   }
 }

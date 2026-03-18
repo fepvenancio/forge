@@ -1,6 +1,7 @@
 import mysql from "mysql2/promise";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { FORGE_CONFIG_PATH } from "../utils/paths.js";
 
 let pool: mysql.Pool | null = null;
 
@@ -16,7 +17,7 @@ function loadConfig(): DoltConfig {
   // Try forge.config.json for defaults
   let configDefaults = { host: "localhost", port: 3306, database: "forge" };
   try {
-    const configPath = resolve(import.meta.dirname, "../../../../forge.config.json");
+    const configPath = FORGE_CONFIG_PATH;
     const config = JSON.parse(readFileSync(configPath, "utf8"));
     if (config.dolt) {
       configDefaults = { ...configDefaults, ...config.dolt };

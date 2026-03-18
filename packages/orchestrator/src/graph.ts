@@ -2,6 +2,7 @@ import { StateGraph, END } from "@langchain/langgraph";
 import { SqliteSaver } from "@langchain/langgraph-checkpoint-sqlite";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { FORGE_DIR } from "./utils/paths.js";
 import { ForgeState, type ForgeStateType } from "./state.js";
 
 // Node implementations — imported from nodes/
@@ -69,7 +70,7 @@ function routeAfterPrSummary(_state: ForgeStateType): string {
 // ─── Graph Assembly ─────────────────────────────────────────────────────────
 
 export function buildForgeGraph(checkpointDbPath?: string) {
-  const dbPath = checkpointDbPath || resolve(import.meta.dirname, "../../../.forge/checkpoints.db");
+  const dbPath = checkpointDbPath || resolve(FORGE_DIR, "checkpoints.db");
   const checkpointer = SqliteSaver.fromConnString(dbPath);
 
   const graph = new StateGraph(ForgeState)

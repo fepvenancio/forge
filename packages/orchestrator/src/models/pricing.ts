@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { FORGE_CONFIG_PATH } from "../utils/paths.js";
 import type { StageRun } from "../dolt/schema.js";
 
 interface PricingEntry {
@@ -16,7 +17,7 @@ let cachedPricing: CostConfig | null = null;
 
 function loadPricing(): CostConfig {
   if (cachedPricing) return cachedPricing;
-  const configPath = resolve(import.meta.dirname, "../../../../forge.config.json");
+  const configPath = FORGE_CONFIG_PATH;
   const config = JSON.parse(readFileSync(configPath, "utf8"));
   cachedPricing = config.cost as CostConfig;
   return cachedPricing;

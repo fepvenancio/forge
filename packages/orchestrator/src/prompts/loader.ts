@@ -1,7 +1,6 @@
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
-
-const AGENTS_DIR = resolve(import.meta.dirname, "../../../../packages/agents");
+import { AGENTS_DIR } from "../utils/paths.js";
 
 export type PromptRole =
   | "planner"
