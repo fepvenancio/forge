@@ -132,6 +132,20 @@ async function cmdRun() {
   console.log(`  PRP: ${resolvedPath}`);
   console.log(`  Planner model: ${plannerModel}`);
 
+  // Persist cycle to Dolt
+  try {
+    await queries.createCycle({ project_id: projectPath, planner_model: plannerModel });
+    // createCycle generates its own ID — update with our cycleId
+    const { execute } = await import("./dolt/client.js");
+    await execute(
+      `INSERT INTO cycles (id, project_id, status, planner_model, started_at) VALUES (?, ?, 'running', ?, ?) ON DUPLICATE KEY UPDATE status = 'running'`,
+      [cycleId, projectPath, plannerModel, Date.now()],
+    );
+    console.log(`  Dolt: cycle tracked`);
+  } catch (err) {
+    console.warn(`  Dolt: could not persist cycle (${err instanceof Error ? err.message : err})`);
+  }
+
   const graph = buildForgeGraph();
   const config = { configurable: { thread_id: cycleId } };
 
@@ -172,8 +186,20 @@ async function cmdRun() {
     config,
   );
 
+  // Persist final result to Dolt
+  try {
+    await queries.updateCycle(cycleId, {
+      status: result.highCourtDecision === "merge" ? "completed" : "failed",
+      finished_at: Date.now(),
+      judge_outcome: result.highCourtDecision === "merge" ? "done" : result.highCourtDecision === "human_required" ? "human_required" : "blocked",
+      notes: `${result.completedTaskIds?.length || 0} completed, ${result.failedTaskIds?.length || 0} failed`,
+    });
+  } catch { /* Dolt write is best-effort */ }
+
   console.log(`Cycle ${cycleId} completed.`);
   console.log(`  Decision: ${result.highCourtDecision}`);
+  console.log(`  Completed: ${result.completedTaskIds?.length || 0} tasks`);
+  console.log(`  Failed: ${result.failedTaskIds?.length || 0} tasks`);
   console.log(`  Total cost: $${result.totalCostUsd}`);
 }
 
