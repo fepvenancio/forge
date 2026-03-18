@@ -33,9 +33,11 @@ if [ -f "$PID_FILE" ]; then
   if kill -0 "$EXISTING_PID" 2>/dev/null; then
     echo "Dolt server already running (PID $EXISTING_PID). Skipping restart."
     # Still run schema in case it's been updated
+    DOLT_DB="${DOLT_DATABASE:-forge}"
+    dolt sql -q "CREATE DATABASE IF NOT EXISTS \`$DOLT_DB\`;" 2>/dev/null || true
     if [ -f "$SCHEMA_FILE" ]; then
       echo "Applying schema..."
-      dolt sql < "$SCHEMA_FILE" 2>/dev/null || true
+      dolt sql -q "USE \`$DOLT_DB\`; $(cat "$SCHEMA_FILE")" 2>/dev/null || true
       echo "Schema applied."
     fi
     exit 0
@@ -47,7 +49,7 @@ fi
 
 # Start Dolt SQL server
 echo "Starting Dolt SQL server on $DOLT_HOST:$DOLT_PORT..."
-dolt sql-server --host "$DOLT_HOST" --port "$DOLT_PORT" --user "$DOLT_USER" &
+dolt sql-server --host "$DOLT_HOST" --port "$DOLT_PORT" &
 DOLT_PID=$!
 echo "$DOLT_PID" > "$PID_FILE"
 
@@ -66,10 +68,14 @@ done
 
 echo "Dolt server is ready (PID $DOLT_PID)."
 
-# Run schema
+# Create forge database and apply schema
+DOLT_DB="${DOLT_DATABASE:-forge}"
+echo "Creating database '$DOLT_DB' if it doesn't exist..."
+dolt sql -q "CREATE DATABASE IF NOT EXISTS \`$DOLT_DB\`;" 2>/dev/null || true
+
 if [ -f "$SCHEMA_FILE" ]; then
   echo "Applying schema from $SCHEMA_FILE..."
-  dolt sql < "$SCHEMA_FILE"
+  dolt sql -q "USE \`$DOLT_DB\`; $(cat "$SCHEMA_FILE")"
   echo "Schema applied successfully."
 else
   echo "WARNING: Schema file not found at $SCHEMA_FILE"

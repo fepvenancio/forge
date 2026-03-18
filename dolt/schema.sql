@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS flow_registry (
 -- Flow-file associations: which source files each flow covers
 CREATE TABLE IF NOT EXISTS flow_file_refs (
   flow_id       VARCHAR(36)   NOT NULL REFERENCES flow_registry(id),
-  file_pattern  TEXT          NOT NULL,
+  file_pattern  VARCHAR(512)  NOT NULL,
   PRIMARY KEY (flow_id, file_pattern)
 );
 
