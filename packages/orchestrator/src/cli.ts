@@ -134,11 +134,9 @@ async function cmdRun() {
 
   // Persist cycle to Dolt
   try {
-    await queries.createCycle({ project_id: projectPath, planner_model: plannerModel });
-    // createCycle generates its own ID — update with our cycleId
-    const { execute } = await import("./dolt/client.js");
-    await execute(
-      `INSERT INTO cycles (id, project_id, status, planner_model, started_at) VALUES (?, ?, 'running', ?, ?) ON DUPLICATE KEY UPDATE status = 'running'`,
+    const { execute: doltExec } = await import("./dolt/client.js");
+    await doltExec(
+      `INSERT INTO cycles (id, project_id, status, planner_model, started_at) VALUES (?, ?, 'running', ?, ?)`,
       [cycleId, projectPath, plannerModel, Date.now()],
     );
     console.log(`  Dolt: cycle tracked`);

@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS tasks (
 -- Cycles: one Planner + N Workers + one High Court = one cycle
 CREATE TABLE IF NOT EXISTS cycles (
   id            VARCHAR(36)   PRIMARY KEY,
-  project_id    VARCHAR(36)   NOT NULL,
+  project_id    TEXT          NOT NULL,
   status        VARCHAR(32)   NOT NULL DEFAULT 'running',
   planner_model VARCHAR(128),
   started_at    BIGINT        NOT NULL,
