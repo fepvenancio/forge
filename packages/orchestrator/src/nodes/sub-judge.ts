@@ -9,6 +9,16 @@ import { getWorktreePath } from "../worktree/manager.js";
 import type { ForgeStateType } from "../state.js";
 
 const FALLBACK_MODEL = "claude-sonnet-4-6";
+const MODEL_TIMEOUT_MS = 120_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms),
+    ),
+  ]);
+}
 
 async function invokeWithFallback(
   primaryModelName: string,
@@ -19,12 +29,12 @@ async function invokeWithFallback(
     const model = primaryModelName.startsWith("claude")
       ? new ChatAnthropic({ model: primaryModelName, temperature: 0 })
       : new ChatGoogleGenerativeAI({ model: primaryModelName, temperature: 0 });
-    const response = await model.invoke(messages);
+    const response = await withTimeout(model.invoke(messages), MODEL_TIMEOUT_MS, `${primaryModelName} for ${taskId}`);
     return typeof response.content === "string" ? response.content : JSON.stringify(response.content);
   } catch (err) {
     console.warn(`[sub-judge] Task ${taskId}: ${primaryModelName} failed, falling back to ${FALLBACK_MODEL}`);
     const fallback = new ChatAnthropic({ model: FALLBACK_MODEL, temperature: 0 });
-    const response = await fallback.invoke(messages);
+    const response = await withTimeout(fallback.invoke(messages), MODEL_TIMEOUT_MS, `${FALLBACK_MODEL} for ${taskId}`);
     return typeof response.content === "string" ? response.content : JSON.stringify(response.content);
   }
 }

@@ -22,6 +22,7 @@ interface TaskPlan {
 }
 
 const FALLBACK_MODEL = "claude-sonnet-4-6";
+const MODEL_TIMEOUT_MS = 120_000; // 2 minutes per model call
 
 function createModelForWorker(modelName: string) {
   if (modelName.startsWith("claude")) {
@@ -30,8 +31,17 @@ function createModelForWorker(modelName: string) {
   return new ChatGoogleGenerativeAI({ model: modelName, temperature: 0 });
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms),
+    ),
+  ]);
+}
+
 /**
- * Invoke model with automatic fallback to Claude if primary model fails.
+ * Invoke model with automatic fallback to Claude if primary model fails or times out.
  */
 async function invokeWithFallback(
   primaryModelName: string,
@@ -40,7 +50,11 @@ async function invokeWithFallback(
 ): Promise<{ content: string; model: string }> {
   try {
     const model = createModelForWorker(primaryModelName);
-    const response = await model.invoke(messages);
+    const response = await withTimeout(
+      model.invoke(messages),
+      MODEL_TIMEOUT_MS,
+      `${primaryModelName} for ${taskId}`,
+    );
     const content = typeof response.content === "string"
       ? response.content
       : JSON.stringify(response.content);
@@ -51,7 +65,11 @@ async function invokeWithFallback(
     console.log(`[worker] Task ${taskId}: falling back to ${FALLBACK_MODEL}`);
 
     const fallback = new ChatAnthropic({ model: FALLBACK_MODEL, temperature: 0 });
-    const response = await fallback.invoke(messages);
+    const response = await withTimeout(
+      fallback.invoke(messages),
+      MODEL_TIMEOUT_MS,
+      `${FALLBACK_MODEL} fallback for ${taskId}`,
+    );
     const content = typeof response.content === "string"
       ? response.content
       : JSON.stringify(response.content);
