@@ -138,6 +138,7 @@ export async function plannerNode(
     console.log(`[planner] Plan accepted with ${taskIds.length} tasks`);
 
     return {
+      planData: parsed as Record<string, unknown>,
       planArtifactId: artifactId,
       plannerModel: modelName,
       plannerRetries: plannerRetries,

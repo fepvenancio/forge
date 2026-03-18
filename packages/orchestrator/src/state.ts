@@ -7,6 +7,7 @@ export const ForgeState = Annotation.Root({
   prpRef: Annotation<string>,
 
   // Planner outputs
+  planData: Annotation<Record<string, unknown> | null>,
   planArtifactId: Annotation<string | null>,
   plannerModel: Annotation<string>,
   plannerRetries: Annotation<number>,

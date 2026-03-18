@@ -140,6 +140,7 @@ async function cmdRun() {
       cycleId,
       projectPath,
       prpRef: resolvedPath,
+      planData: null,
       planArtifactId: null,
       plannerModel,
       plannerRetries: 0,
