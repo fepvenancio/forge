@@ -28,44 +28,35 @@ function readFileSafe(filePath: string): string | null {
 }
 
 /**
- * Get list of changed files in a worktree via git.
+ * Get current HEAD commit SHA.
  */
-function getChangedFiles(worktreePath: string): string[] {
-  try {
-    const modified = execSync("git diff --name-only", { cwd: worktreePath, encoding: "utf8" }).trim();
-    const staged = execSync("git diff --cached --name-only", { cwd: worktreePath, encoding: "utf8" }).trim();
-    const untracked = execSync("git ls-files --others --exclude-standard", { cwd: worktreePath, encoding: "utf8" }).trim();
-
-    const all = new Set<string>();
-    for (const line of [...modified.split("\n"), ...staged.split("\n"), ...untracked.split("\n")]) {
-      if (line.trim()) all.add(line.trim());
-    }
-    return [...all];
-  } catch {
-    return [];
-  }
+function getHeadSha(cwd: string): string {
+  return execSync("git rev-parse HEAD", { cwd, encoding: "utf8" }).trim();
 }
 
 /**
- * Revert files that are not in the allowed writes list.
+ * Get list of files changed between two commits.
  */
-function revertUnauthorizedFiles(worktreePath: string, allowedWrites: string[], changedFiles: string[]): string[] {
-  const reverted: string[] = [];
-  for (const file of changedFiles) {
-    if (!allowedWrites.includes(file)) {
-      try {
-        execSync(`git checkout -- "${file}"`, { cwd: worktreePath, encoding: "utf8" });
-        reverted.push(file);
-      } catch {
-        // File might be untracked — remove it
-        try {
-          execSync(`rm -f "${file}"`, { cwd: worktreePath, encoding: "utf8" });
-          reverted.push(file);
-        } catch { /* ignore */ }
+function getChangedFilesSinceCommit(cwd: string, baseSha: string): string[] {
+  try {
+    const headSha = getHeadSha(cwd);
+    if (headSha === baseSha) {
+      // HEAD hasn't moved — check for uncommitted changes too
+      const modified = execSync("git diff --name-only", { cwd, encoding: "utf8" }).trim();
+      const staged = execSync("git diff --cached --name-only", { cwd, encoding: "utf8" }).trim();
+      const untracked = execSync("git ls-files --others --exclude-standard", { cwd, encoding: "utf8" }).trim();
+      const all = new Set<string>();
+      for (const line of [...modified.split("\n"), ...staged.split("\n"), ...untracked.split("\n")]) {
+        if (line.trim()) all.add(line.trim());
       }
+      return [...all];
     }
+    // HEAD moved — Claude committed. Get diff between base and HEAD.
+    const diff = execSync(`git diff --name-only ${baseSha}..HEAD`, { cwd, encoding: "utf8" }).trim();
+    return diff ? diff.split("\n").filter(Boolean) : [];
+  } catch {
+    return [];
   }
-  return reverted;
 }
 
 export async function workerNode(
@@ -98,6 +89,9 @@ export async function workerNode(
         failedTaskIds.push(taskId);
         continue;
       }
+
+      // Record HEAD before Claude runs — so we can detect what it changed
+      const baseSha = getHeadSha(worktreePath);
 
       // Build prompt for Claude Code — it reads files directly in the worktree
       const contextParts: string[] = [];
@@ -167,8 +161,8 @@ After making changes, provide a summary of what you did.`);
 
         console.log(`[worker] Task ${taskId}: claude responded in ${((Date.now() - callStart) / 1000).toFixed(1)}s`);
 
-        // Check what files changed
-        const changedFiles = getChangedFiles(worktreePath);
+        // Check what files changed (including files Claude committed itself)
+        const changedFiles = getChangedFilesSinceCommit(worktreePath, baseSha);
         if (changedFiles.length > 0 || attempt === MAX_WORKER_ATTEMPTS - 1) {
           if (changedFiles.length === 0 && attempt === MAX_WORKER_ATTEMPTS - 1) {
             console.warn(`[worker] Task ${taskId}: no files changed after ${MAX_WORKER_ATTEMPTS} attempts`);
@@ -178,20 +172,14 @@ After making changes, provide a summary of what you did.`);
         console.log(`[worker] Task ${taskId}: 0 files changed, retrying (attempt ${attempt + 2}/${MAX_WORKER_ATTEMPTS})...`);
       }
 
-      // Validate changes against touch_map.writes — revert unauthorized files
-      const changedFiles = getChangedFiles(worktreePath);
-      const reverted = revertUnauthorizedFiles(worktreePath, taskPlan.touch_map.writes, changedFiles);
-      if (reverted.length > 0) {
-        console.warn(`[worker] Task ${taskId}: reverted ${reverted.length} unauthorized files: ${reverted.join(", ")}`);
-      }
+      // Get final list of all changed files (committed + uncommitted)
+      const changedFiles = getChangedFilesSinceCommit(worktreePath, baseSha);
+      const headMoved = getHeadSha(worktreePath) !== baseSha;
 
-      // Get final list of allowed changed files
-      const allowedChanges = changedFiles.filter(f => taskPlan.touch_map.writes.includes(f));
-
-      // Commit changes in worktree
-      if (allowedChanges.length > 0) {
+      // If Claude didn't commit but left uncommitted changes, commit them
+      if (!headMoved && changedFiles.length > 0) {
         try {
-          execSync(`git add ${allowedChanges.map(f => `"${f}"`).join(" ")}`, {
+          execSync(`git add ${changedFiles.map(f => `"${f}"`).join(" ")}`, {
             cwd: worktreePath,
             encoding: "utf8",
           });
@@ -199,10 +187,12 @@ After making changes, provide a summary of what you did.`);
             `git commit -m "forge(${taskId}): ${taskPlan.title}"`,
             { cwd: worktreePath, encoding: "utf8" },
           );
-          console.log(`[worker] Task ${taskId}: committed ${allowedChanges.length} files to ${workerBranches[taskId]}`);
+          console.log(`[worker] Task ${taskId}: committed ${changedFiles.length} files to ${workerBranches[taskId]}`);
         } catch (e) {
           console.warn(`[worker] Task ${taskId}: git commit failed: ${e instanceof Error ? e.message : e}`);
         }
+      } else if (headMoved) {
+        console.log(`[worker] Task ${taskId}: Claude committed ${changedFiles.length} files to ${workerBranches[taskId]}`);
       }
 
       // Write handoff document using Claude Code's natural summary
@@ -219,10 +209,7 @@ ${taskPlan.title}
 ${lastResponse?.result || "No summary provided"}
 
 ## Files Modified
-${allowedChanges.map((f) => `- ${f}`).join("\n") || "- (none)"}
-
-## Reverted Files
-${reverted.length > 0 ? reverted.map((f) => `- ${f} (not in touch_map.writes)`).join("\n") : "- (none)"}
+${changedFiles.map((f) => `- ${f}`).join("\n") || "- (none)"}
 `;
       writeFileSync(handoffPath, handoffContent);
 
