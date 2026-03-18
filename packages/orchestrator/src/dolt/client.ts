@@ -16,7 +16,7 @@ function loadConfig(): DoltConfig {
   // Try forge.config.json for defaults
   let configDefaults = { host: "localhost", port: 3306, database: "forge" };
   try {
-    const configPath = resolve(process.cwd(), "forge.config.json");
+    const configPath = resolve(import.meta.dirname, "../../../../forge.config.json");
     const config = JSON.parse(readFileSync(configPath, "utf8"));
     if (config.dolt) {
       configDefaults = { ...configDefaults, ...config.dolt };
