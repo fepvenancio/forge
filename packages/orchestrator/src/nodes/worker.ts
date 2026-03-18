@@ -22,7 +22,7 @@ interface TaskPlan {
 }
 
 const FALLBACK_MODEL = "claude-sonnet-4-6";
-const MODEL_TIMEOUT_MS = 120_000; // 2 minutes per model call
+const MODEL_TIMEOUT_MS = 300_000; // 5 minutes per model call
 
 function createModelForWorker(modelName: string) {
   if (modelName.startsWith("claude")) {
