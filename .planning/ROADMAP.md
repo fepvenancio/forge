@@ -79,11 +79,12 @@ Plans:
   2. Running `forge cost` with `--team` or `--dev <name>` flags shows cost reports broken down by model, phase, and developer
   3. Cost-per-PR analysis correlates developer cost reports with phases, and budget alerts fire when a phase exceeds its configurable threshold
   4. All dashboard views read from Dolt and refresh automatically
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: Streamlit dashboard pages (phase map, PR status, merge order, file locks)
-- [ ] 04-02: Cost tracking, reporting, and budget alerts
+- [ ] 04-00-PLAN.md — Wave 0 test stubs for cost queries, cost CLI, and dashboard CLI
+- [ ] 04-01-PLAN.md — Cost tracking query functions, forge cost CLI command, forge dashboard CLI command
+- [ ] 04-02-PLAN.md — Streamlit dashboard pages (phase map, PR status, merge order, file locks, team costs) and app.py v2 branding
 
 ## Progress
 
@@ -95,4 +96,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 | 1. Foundation and Developer Registry | 0/3 | Not started | - |
 | 2. Conflict Detection Engine | 0/3 | Not started | - |
 | 3. Event-Driven Enforcement | 1/4 | In Progress|  |
-| 4. Team Dashboard and Cost Tracking | 0/2 | Not started | - |
+| 4. Team Dashboard and Cost Tracking | 0/3 | Not started | - |
