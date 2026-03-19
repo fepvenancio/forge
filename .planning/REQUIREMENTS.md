@@ -9,9 +9,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Schema & Foundation
 
-- [ ] **SCHEMA-01**: Clean-slate Dolt v2 schema with `developers`, `phase_assignments`, `file_locks`, `developer_costs` tables
-- [ ] **SCHEMA-02**: Archive v0.1.0 data safely before dropping old tables
-- [ ] **SCHEMA-03**: All Dolt writes serialized through single process to prevent concurrent write conflicts
+- [x] **SCHEMA-01**: Clean-slate Dolt v2 schema with `developers`, `phase_assignments`, `file_locks`, `developer_costs` tables
+- [x] **SCHEMA-02**: Archive v0.1.0 data safely before dropping old tables
+- [x] **SCHEMA-03**: All Dolt writes serialized through single process to prevent concurrent write conflicts
 
 ### Developer Identity
 
@@ -144,9 +144,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SCHEMA-01 | Phase 1 | Pending |
-| SCHEMA-02 | Phase 1 | Pending |
-| SCHEMA-03 | Phase 1 | Pending |
+| SCHEMA-01 | Phase 1 | Complete |
+| SCHEMA-02 | Phase 1 | Complete |
+| SCHEMA-03 | Phase 1 | Complete |
 | IDENT-01 | Phase 1 | Complete |
 | IDENT-02 | Phase 1 | Complete |
 | IDENT-03 | Phase 1 | Complete |
