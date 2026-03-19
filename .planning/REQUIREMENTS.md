@@ -89,14 +89,14 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **DASH-03**: Dashboard shows merge order recommendation
 - [ ] **DASH-04**: Dashboard shows file lock map (which files are locked by whom)
 - [ ] **DASH-05**: Dashboard shows cost per developer and per phase
-- [ ] **DASH-06**: `forge dashboard` launches the Streamlit app
+- [x] **DASH-06**: `forge dashboard` launches the Streamlit app
 
 ### Cost Tracking
 
-- [ ] **COST-01**: Developer costs recorded in Dolt: model, input/output tokens, USD, phase
-- [ ] **COST-02**: `forge cost` shows cost report (supports `--team` and `--dev <name>` flags)
-- [ ] **COST-03**: Cost-per-PR analysis correlates developer cost reports with phase/PR
-- [ ] **COST-04**: Budget alerts when phase cost exceeds configurable threshold
+- [x] **COST-01**: Developer costs recorded in Dolt: model, input/output tokens, USD, phase
+- [x] **COST-02**: `forge cost` shows cost report (supports `--team` and `--dev <name>` flags)
+- [x] **COST-03**: Cost-per-PR analysis correlates developer cost reports with phase/PR
+- [x] **COST-04**: Budget alerts when phase cost exceeds configurable threshold
 - [ ] **COST-05**: Cost data displayed in team dashboard
 
 ### CLI Interface
@@ -195,11 +195,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DASH-03 | Phase 4 | Pending |
 | DASH-04 | Phase 4 | Pending |
 | DASH-05 | Phase 4 | Pending |
-| DASH-06 | Phase 4 | Pending |
-| COST-01 | Phase 4 | Pending |
-| COST-02 | Phase 4 | Pending |
-| COST-03 | Phase 4 | Pending |
-| COST-04 | Phase 4 | Pending |
+| DASH-06 | Phase 4 | Complete |
+| COST-01 | Phase 4 | Complete |
+| COST-02 | Phase 4 | Complete |
+| COST-03 | Phase 4 | Complete |
+| COST-04 | Phase 4 | Complete |
 | COST-05 | Phase 4 | Pending |
 
 **Coverage:**
