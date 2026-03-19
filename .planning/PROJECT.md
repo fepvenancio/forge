@@ -24,22 +24,22 @@ Multiple developers can work on the same repo simultaneously with Claude Code + 
 - Claude Code CLI integration (`claude -p`)
 - Streamlit dashboard
 - pnpm monorepo with 8 packages
+- ✓ Clean-slate Dolt v2 schema (developers, phase_assignments, file_locks, developer_costs) — Phase 1
+- ✓ Developer registry & phase assignment (forge register, claim, assign, release, phases) — Phase 1
+- ✓ Commander CLI framework with git-style subcommands — Phase 1
+- ✓ Git branching enforcement: `gsd/phase-{N}-{slug}` pattern, 1:1:1 model — Phase 1
+- ✓ CLI commands: forge register, team, sync, status, claim, assign, release, phases — Phase 1
 
 ### Active
 
-- [ ] Shared roadmap server — Dolt stores canonical ROADMAP, `forge sync` pulls to local
-- [ ] Developer registry & phase assignment — `forge register`, `forge claim`, `forge assign`
 - [ ] Touch map conflict detection — compare PLAN.md touch maps across active phase branches
+- [ ] GSD artifact reading (ROADMAP.md, PLAN.md touch maps, SUMMARY.md, config.json) — read-only
+- [ ] Advisory file locks (trust developers, flag conflicts, don't block)
 - [ ] Flow document management — Librarian agent triggers on push, freshness gate in CI
 - [ ] CI gate pipeline — GitHub Actions: flow freshness, touch map conflicts, config validation, tests, cost audit
-- [ ] Team dashboard — Streamlit with phase ownership, PR status, merge order, cost per dev, file lock map
 - [ ] Merge order engine — dependency graph analysis, suggested merge order, PR comments
+- [ ] Team dashboard — Streamlit with phase ownership, PR status, merge order, cost per dev, file lock map
 - [ ] Cost tracking & reporting — per-developer, per-phase, per-model cost breakdown with budget alerts
-- [ ] CLI commands: `forge register`, `forge team`, `forge assign`, `forge claim`, `forge release`, `forge phases`, `forge check-conflicts`, `forge lock`, `forge unlock`, `forge locks`, `forge sync`, `forge status`, `forge merge-order`, `forge dashboard`, `forge cost`
-- [ ] Clean-slate Dolt schema: `developers`, `phase_assignments`, `file_locks`, `developer_costs` tables
-- [ ] GSD artifact reading (ROADMAP.md, PLAN.md touch maps, SUMMARY.md, config.json) — read-only
-- [ ] Git branching enforcement: `gsd/phase-{N}-{slug}` pattern, one phase per branch per developer
-- [ ] Advisory file locks (trust developers, flag conflicts, don't block)
 
 ### Out of Scope
 
@@ -87,4 +87,4 @@ Initial users: solo developer coordinating multiple Claude Code sessions, growin
 | Streamlit for dashboard | Already exists, easy to extend, good enough for team of 3-10 | — Pending |
 
 ---
-*Last updated: 2026-03-18 after initialization*
+*Last updated: 2026-03-19 after Phase 1 completion*
