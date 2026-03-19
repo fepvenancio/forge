@@ -25,6 +25,42 @@ function isGsdBranch(ref: string): boolean {
   return /^gsd\/phase-\d+-[a-z0-9-]+$/.test(ref);
 }
 
+async function postOrUpdateComment(
+  octokit: any,
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  marker: string,
+  body: string,
+): Promise<void> {
+  const markedBody = `${marker}\n${body}`;
+
+  // Look for existing comment with this marker
+  const { data: comments } = await octokit.issues.listComments({
+    owner,
+    repo,
+    issue_number: issueNumber,
+  });
+
+  const existing = comments.find((c: any) => c.body?.includes(marker));
+
+  if (existing) {
+    await octokit.issues.updateComment({
+      owner,
+      repo,
+      comment_id: existing.id,
+      body: markedBody,
+    });
+  } else {
+    await octokit.issues.createComment({
+      owner,
+      repo,
+      issue_number: issueNumber,
+      body: markedBody,
+    });
+  }
+}
+
 async function handlePullRequestOpened(payload: PullRequestPayload): Promise<string> {
   const branch = payload.pull_request.head.ref;
 
@@ -60,12 +96,64 @@ async function handlePullRequestOpened(payload: PullRequestPayload): Promise<str
     if (token) {
       const { Octokit } = await import("@octokit/rest");
       const octokit = new Octokit({ auth: token });
-      await octokit.issues.createComment({
-        owner: payload.repository.owner.login,
-        repo: payload.repository.name,
-        issue_number: payload.number,
+
+      // Post conflict report comment
+      await postOrUpdateComment(
+        octokit,
+        payload.repository.owner.login,
+        payload.repository.name,
+        payload.number,
+        "<!-- forge-conflict-check -->",
         body,
-      });
+      );
+
+      // ─── Merge Order Comment (MERGE-03) ──────────────────────────────
+      try {
+        const { getMergeOrderForOpenPRs } = await import("../../orchestrator/src/coordination/merge-engine.js");
+        const mergeOrder = await getMergeOrderForOpenPRs();
+
+        if (mergeOrder.order.length >= 2) {
+          const orderLines = mergeOrder.order.map(
+            (phaseId: number, idx: number) => `| ${idx + 1} | Phase ${phaseId} |`
+          );
+          let mergeBody = `## Forge Merge Order\n\nSuggested merge order for open PRs:\n\n| Order | Phase |\n|-------|-------|\n${orderLines.join("\n")}`;
+
+          if (mergeOrder.reasoning.length > 0) {
+            mergeBody += `\n\n### Reasoning\n\n${mergeOrder.reasoning.map((r: string) => `- ${r}`).join("\n")}`;
+          }
+
+          if (mergeOrder.cycles.length > 0) {
+            mergeBody += `\n\n### Dependency Cycles\n\n${mergeOrder.cycles.map((c: number[]) => `- Phases ${c.join(", ")} form a cycle`).join("\n")}`;
+          }
+
+          await postOrUpdateComment(
+            octokit,
+            payload.repository.owner.login,
+            payload.repository.name,
+            payload.number,
+            "<!-- forge-merge-order -->",
+            mergeBody,
+          );
+        }
+      } catch (mergeErr) {
+        const mergeMsg = mergeErr instanceof Error ? mergeErr.message : String(mergeErr);
+        console.error(`[merge-order] Failed to post merge order: ${mergeMsg}`);
+      }
+
+      // ─── Escalation (ESC-01, ESC-02) ────────────────────────────────
+      if (report.conflicts.length > 0) {
+        try {
+          const { escalateConflicts } = await import("../../orchestrator/src/coordination/escalation.js");
+          const queries = await import("../../orchestrator/src/dolt/queries.js");
+          const assignments = await queries.getAllPhaseAssignments();
+          const developers = await queries.getAllDevelopers();
+          await escalateConflicts(report, assignments, developers);
+        } catch (escErr) {
+          const escMsg = escErr instanceof Error ? escErr.message : String(escErr);
+          console.error(`[escalation] Failed to escalate conflicts: ${escMsg}`);
+        }
+      }
+
       return `Posted conflict report to PR #${payload.number}`;
     } else {
       console.log("GITHUB_TOKEN not set -- conflict report not posted to PR");

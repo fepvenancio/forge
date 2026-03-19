@@ -3,9 +3,38 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("../../../packages/orchestrator/src/dolt/queries.js", () => ({
   getFlowsForFile: vi.fn(),
   markFlowStale: vi.fn(),
+  getAllPhaseAssignments: vi.fn(),
+  getAllDevelopers: vi.fn(),
 }));
 
-import { handlePushEvent, extractChangedFiles } from "../../../packages/webhook/src/server.js";
+vi.mock("../../../packages/orchestrator/src/coordination/conflict-detector.js", () => ({
+  checkConflicts: vi.fn(),
+}));
+
+vi.mock("../../../packages/orchestrator/src/coordination/merge-engine.js", () => ({
+  getMergeOrderForOpenPRs: vi.fn(),
+}));
+
+vi.mock("../../../packages/orchestrator/src/coordination/escalation.js", () => ({
+  escalateConflicts: vi.fn(),
+}));
+
+// Shared mock instances so we can inspect calls across the test
+const mockCreateComment = vi.fn().mockResolvedValue({});
+const mockListComments = vi.fn().mockResolvedValue({ data: [] });
+const mockUpdateComment = vi.fn().mockResolvedValue({});
+
+vi.mock("@octokit/rest", () => ({
+  Octokit: vi.fn().mockImplementation(() => ({
+    issues: {
+      createComment: mockCreateComment,
+      listComments: mockListComments,
+      updateComment: mockUpdateComment,
+    },
+  })),
+}));
+
+import { handlePushEvent, extractChangedFiles, handlePullRequestOpened } from "../../../packages/webhook/src/server.js";
 
 describe("push event handler", () => {
   beforeEach(() => {
@@ -83,5 +112,185 @@ describe("push event handler", () => {
     });
 
     expect(result).toContain("Dolt unavailable");
+  });
+
+  describe("merge order PR comment", () => {
+    beforeEach(() => {
+      process.env.GITHUB_TOKEN = "test-token";
+    });
+
+    it("posts merge order PR comment when multiple PRs are open", async () => {
+      const { checkConflicts } = await import("../../../packages/orchestrator/src/coordination/conflict-detector.js");
+      const { getMergeOrderForOpenPRs } = await import("../../../packages/orchestrator/src/coordination/merge-engine.js");
+
+      vi.mocked(checkConflicts).mockResolvedValue({
+        conflicts: [],
+        lockWarnings: [],
+        declaredOnlyFiles: new Map(),
+        actualOnlyFiles: new Map(),
+        timestamp: Date.now(),
+      });
+
+      vi.mocked(getMergeOrderForOpenPRs).mockResolvedValue({
+        order: [1, 3],
+        cycles: [],
+        reasoning: ["Phase 1 before Phase 3 (shared files: src/auth.ts)"],
+      });
+
+      mockListComments.mockResolvedValue({ data: [] });
+
+      const result = await handlePullRequestOpened({
+        action: "opened",
+        number: 42,
+        pull_request: { head: { ref: "gsd/phase-1-foundation" } },
+        repository: { owner: { login: "org" }, name: "repo" },
+      });
+
+      expect(result).toContain("PR #42");
+      expect(getMergeOrderForOpenPRs).toHaveBeenCalled();
+    });
+
+    it("uses <!-- forge-merge-order --> marker for update-or-create", async () => {
+      const { checkConflicts } = await import("../../../packages/orchestrator/src/coordination/conflict-detector.js");
+      const { getMergeOrderForOpenPRs } = await import("../../../packages/orchestrator/src/coordination/merge-engine.js");
+
+      vi.mocked(checkConflicts).mockResolvedValue({
+        conflicts: [],
+        lockWarnings: [],
+        declaredOnlyFiles: new Map(),
+        actualOnlyFiles: new Map(),
+        timestamp: Date.now(),
+      });
+
+      vi.mocked(getMergeOrderForOpenPRs).mockResolvedValue({
+        order: [1, 3],
+        cycles: [],
+        reasoning: ["Phase 1 before Phase 3 (shared files: src/auth.ts)"],
+      });
+
+      // Simulate existing merge order comment for update path
+      mockListComments.mockResolvedValue({
+        data: [{ id: 99, body: "<!-- forge-merge-order -->\nOld content" }],
+      });
+
+      await handlePullRequestOpened({
+        action: "opened",
+        number: 42,
+        pull_request: { head: { ref: "gsd/phase-1-foundation" } },
+        repository: { owner: { login: "org" }, name: "repo" },
+      });
+
+      // Check shared mock calls for merge-order marker
+      const createBodies = mockCreateComment.mock.calls.map((c: any) => c[0]?.body || "");
+      const updateBodies = mockUpdateComment.mock.calls.map((c: any) => c[0]?.body || "");
+      const allBodies = [...createBodies, ...updateBodies];
+
+      const hasMergeOrderMarker = allBodies.some((b: string) => b.includes("<!-- forge-merge-order -->"));
+      expect(hasMergeOrderMarker).toBe(true);
+    });
+
+    it("skips merge order comment when fewer than 2 PRs are open", async () => {
+      const { checkConflicts } = await import("../../../packages/orchestrator/src/coordination/conflict-detector.js");
+      const { getMergeOrderForOpenPRs } = await import("../../../packages/orchestrator/src/coordination/merge-engine.js");
+
+      vi.mocked(checkConflicts).mockResolvedValue({
+        conflicts: [],
+        lockWarnings: [],
+        declaredOnlyFiles: new Map(),
+        actualOnlyFiles: new Map(),
+        timestamp: Date.now(),
+      });
+
+      vi.mocked(getMergeOrderForOpenPRs).mockResolvedValue({
+        order: [1],
+        cycles: [],
+        reasoning: [],
+      });
+
+      mockListComments.mockResolvedValue({ data: [] });
+
+      await handlePullRequestOpened({
+        action: "opened",
+        number: 42,
+        pull_request: { head: { ref: "gsd/phase-1-foundation" } },
+        repository: { owner: { login: "org" }, name: "repo" },
+      });
+
+      // Should have conflict comment but NOT merge order (only 1 phase)
+      const createBodies = mockCreateComment.mock.calls.map((c: any) => c[0]?.body || "");
+      const hasMergeOrderMarker = createBodies.some((b: string) => b.includes("<!-- forge-merge-order -->"));
+      expect(hasMergeOrderMarker).toBe(false);
+    });
+  });
+
+  describe("escalation wiring", () => {
+    beforeEach(() => {
+      process.env.GITHUB_TOKEN = "test-token";
+    });
+
+    it("triggers escalateConflicts when conflict report has conflicts", async () => {
+      const { checkConflicts } = await import("../../../packages/orchestrator/src/coordination/conflict-detector.js");
+      const { escalateConflicts } = await import("../../../packages/orchestrator/src/coordination/escalation.js");
+      const queries = await import("../../../packages/orchestrator/src/dolt/queries.js");
+      const { getMergeOrderForOpenPRs } = await import("../../../packages/orchestrator/src/coordination/merge-engine.js");
+
+      const mockReport = {
+        conflicts: [
+          { filePath: "src/auth.ts", phases: [{ phaseId: 1, source: "declared" }, { phaseId: 3, source: "actual" }] },
+        ],
+        lockWarnings: [],
+        declaredOnlyFiles: new Map(),
+        actualOnlyFiles: new Map(),
+        timestamp: Date.now(),
+      };
+
+      vi.mocked(checkConflicts).mockResolvedValue(mockReport);
+      vi.mocked(getMergeOrderForOpenPRs).mockResolvedValue({ order: [1], cycles: [], reasoning: [] });
+      vi.mocked(queries.getAllPhaseAssignments).mockResolvedValue([]);
+      vi.mocked(queries.getAllDevelopers).mockResolvedValue([]);
+      vi.mocked(escalateConflicts).mockResolvedValue(true);
+
+      await handlePullRequestOpened({
+        action: "opened",
+        number: 42,
+        pull_request: { head: { ref: "gsd/phase-1-foundation" } },
+        repository: { owner: { login: "org" }, name: "repo" },
+      });
+
+      expect(escalateConflicts).toHaveBeenCalledWith(mockReport, [], []);
+    });
+
+    it("does not fail webhook response when escalation fails", async () => {
+      const { checkConflicts } = await import("../../../packages/orchestrator/src/coordination/conflict-detector.js");
+      const { escalateConflicts } = await import("../../../packages/orchestrator/src/coordination/escalation.js");
+      const queries = await import("../../../packages/orchestrator/src/dolt/queries.js");
+      const { getMergeOrderForOpenPRs } = await import("../../../packages/orchestrator/src/coordination/merge-engine.js");
+
+      vi.mocked(checkConflicts).mockResolvedValue({
+        conflicts: [
+          { filePath: "src/auth.ts", phases: [{ phaseId: 1, source: "declared" }, { phaseId: 3, source: "actual" }] },
+        ],
+        lockWarnings: [],
+        declaredOnlyFiles: new Map(),
+        actualOnlyFiles: new Map(),
+        timestamp: Date.now(),
+      });
+
+      vi.mocked(getMergeOrderForOpenPRs).mockResolvedValue({ order: [1], cycles: [], reasoning: [] });
+      vi.mocked(queries.getAllPhaseAssignments).mockResolvedValue([]);
+      vi.mocked(queries.getAllDevelopers).mockResolvedValue([]);
+      vi.mocked(escalateConflicts).mockRejectedValue(new Error("Webhook timeout"));
+
+      // Should NOT throw
+      const result = await handlePullRequestOpened({
+        action: "opened",
+        number: 42,
+        pull_request: { head: { ref: "gsd/phase-1-foundation" } },
+        repository: { owner: { login: "org" }, name: "repo" },
+      });
+
+      // Should still return a success message (conflict report posted)
+      expect(result).toContain("PR #42");
+    });
   });
 });
