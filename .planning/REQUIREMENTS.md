@@ -15,16 +15,16 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Developer Identity
 
-- [ ] **IDENT-01**: Developer can register with `forge register` using their GitHub username
-- [ ] **IDENT-02**: Developer can view all registered team members with `forge team`
-- [ ] **IDENT-03**: Developer registration persists in Dolt `developers` table with `last_active` timestamp
+- [x] **IDENT-01**: Developer can register with `forge register` using their GitHub username
+- [x] **IDENT-02**: Developer can view all registered team members with `forge team`
+- [x] **IDENT-03**: Developer registration persists in Dolt `developers` table with `last_active` timestamp
 
 ### Phase Assignment
 
 - [ ] **PHASE-01**: Developer can claim an unassigned phase with `forge claim <phase>`
 - [ ] **PHASE-02**: Team lead can assign a phase to a developer with `forge assign <phase> --to <dev>`
 - [ ] **PHASE-03**: Developer can release their phase assignment with `forge release <phase>`
-- [ ] **PHASE-04**: `forge phases` shows all phases with current ownership and status
+- [x] **PHASE-04**: `forge phases` shows all phases with current ownership and status
 - [ ] **PHASE-05**: Phase assignment enforces 1:1:1 model (one phase, one branch, one developer)
 - [ ] **PHASE-06**: Phase status tracks lifecycle: assigned, in_progress, pr_open, merged, blocked
 
@@ -103,8 +103,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [ ] **CLI-01**: All commands available via `forge <command>` with consistent help output
 - [ ] **CLI-02**: CLI uses commander with git-style subcommands
-- [ ] **CLI-03**: `forge sync` pulls latest roadmap and assignments from Dolt
-- [ ] **CLI-04**: `forge status` shows team-wide status (who's on what, PR states)
+- [x] **CLI-03**: `forge sync` pulls latest roadmap and assignments from Dolt
+- [x] **CLI-04**: `forge status` shows team-wide status (who's on what, PR states)
 
 ## v2 Requirements
 
@@ -147,21 +147,21 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SCHEMA-01 | Phase 1 | Pending |
 | SCHEMA-02 | Phase 1 | Pending |
 | SCHEMA-03 | Phase 1 | Pending |
-| IDENT-01 | Phase 1 | Pending |
-| IDENT-02 | Phase 1 | Pending |
-| IDENT-03 | Phase 1 | Pending |
+| IDENT-01 | Phase 1 | Complete |
+| IDENT-02 | Phase 1 | Complete |
+| IDENT-03 | Phase 1 | Complete |
 | PHASE-01 | Phase 1 | Pending |
 | PHASE-02 | Phase 1 | Pending |
 | PHASE-03 | Phase 1 | Pending |
-| PHASE-04 | Phase 1 | Pending |
+| PHASE-04 | Phase 1 | Complete |
 | PHASE-05 | Phase 1 | Pending |
 | PHASE-06 | Phase 1 | Pending |
 | BRANCH-01 | Phase 1 | Pending |
 | BRANCH-02 | Phase 1 | Pending |
 | CLI-01 | Phase 1 | Pending |
 | CLI-02 | Phase 1 | Pending |
-| CLI-03 | Phase 1 | Pending |
-| CLI-04 | Phase 1 | Pending |
+| CLI-03 | Phase 1 | Complete |
+| CLI-04 | Phase 1 | Complete |
 | GSD-01 | Phase 2 | Pending |
 | GSD-02 | Phase 2 | Pending |
 | GSD-03 | Phase 2 | Pending |
