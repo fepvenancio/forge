@@ -62,11 +62,13 @@ Plans:
   2. Running `forge merge-order` shows the optimal merge sequence for open PRs based on the dependency graph, and this order is posted as a PR comment when multiple PRs are open
   3. Flow documents maintain criticality-based freshness thresholds, and the Librarian triggers on push events to update `.flows/` files
   4. Unresolvable conflicts are escalated to Slack/Discord/Teams with full context (files, phases, developers)
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 03-01: CI gate pipeline (GitHub Actions workflow with five checks)
-- [ ] 03-02: Merge order engine and flow/escalation integration
+- [ ] 03-00-PLAN.md — Wave 0 test stubs for merge engine, escalation, CLI, webhook, and CI gate tests
+- [ ] 03-01-PLAN.md — CI gate pipeline (3 Python gate scripts + unified forge-gates.yml workflow)
+- [ ] 03-02-PLAN.md — Merge order engine (Kahn's algorithm), escalation module, and forge merge-order CLI
+- [ ] 03-03-PLAN.md — Webhook push handler (flow staleness), merge order PR comments, and escalation wiring
 
 ### Phase 4: Team Dashboard and Cost Tracking
 **Goal**: The team has full visibility into phase ownership, PR status, merge order, file locks, and per-developer/per-phase costs through a Streamlit dashboard and CLI reports
@@ -92,5 +94,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 |-------|----------------|--------|-----------|
 | 1. Foundation and Developer Registry | 0/3 | Not started | - |
 | 2. Conflict Detection Engine | 0/3 | Not started | - |
-| 3. Event-Driven Enforcement | 0/2 | Not started | - |
+| 3. Event-Driven Enforcement | 0/4 | Not started | - |
 | 4. Team Dashboard and Cost Tracking | 0/2 | Not started | - |
