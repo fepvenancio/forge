@@ -12,6 +12,7 @@ import { syncCommands } from "./commands/sync.js";
 import { statusCommands } from "./commands/status.js";
 import { phaseCommands } from "./commands/phases.js";
 import { conflictCommands } from "./commands/conflicts.js";
+import { mergeOrderCommands } from "./commands/merge-order.js";
 
 const PID_DIR = resolve(process.cwd(), ".forge", "pids");
 
@@ -27,6 +28,7 @@ syncCommands(program);
 statusCommands(program);
 phaseCommands(program);
 conflictCommands(program);
+mergeOrderCommands(program);
 
 // ─── Legacy commands (preserved from v0.1.0) ────────────────────────────────
 
