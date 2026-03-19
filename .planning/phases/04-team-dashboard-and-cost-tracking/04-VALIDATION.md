@@ -38,11 +38,12 @@ created: 2026-03-19
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 04-00-01 | 00 | 1 | COST-01..04, DASH-06 | unit | `npx vitest run test/unit/commands/cost.test.ts test/unit/commands/dashboard.test.ts test/unit/dolt/cost-queries.test.ts` | ❌ W0 | ⬜ pending |
-| 04-01-01 | 01 | 2 | DASH-01..06 | manual | Streamlit pages + forge dashboard CLI | N/A | ⬜ pending |
-| 04-02-01 | 02 | 2 | COST-01..05 | unit | `npx vitest run test/unit/commands/cost.test.ts test/unit/dolt/cost-queries.test.ts` | ❌ W0 | ⬜ pending |
+| 04-00-01 | 00 | 1 | COST-01..04, DASH-06 | unit | `npx vitest run test/unit/commands/cost.test.ts test/unit/commands/dashboard.test.ts test/unit/dolt/cost-queries.test.ts` | --- W0 | ⬜ pending |
+| 04-01-01 | 01 | 2 | COST-01..04, DASH-06 | unit | `npx vitest run test/unit/dolt/cost-queries.test.ts` | --- W0 | ⬜ pending |
+| 04-01-02 | 01 | 2 | COST-02, COST-03, COST-04, DASH-06 | unit | `npx vitest run test/unit/commands/cost.test.ts test/unit/commands/dashboard.test.ts` | --- W0 | ⬜ pending |
+| 04-02-01 | 02 | 2 | DASH-01..05, COST-05 | manual | Streamlit pages + forge dashboard CLI | N/A | ⬜ pending |
 
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+*Status: ⬜ pending · ✅ green · --- red · ⚠️ flaky*
 
 ---
 
@@ -50,7 +51,7 @@ created: 2026-03-19
 
 - [ ] `test/unit/commands/cost.test.ts` — stubs for COST-02, COST-03, COST-04
 - [ ] `test/unit/commands/dashboard.test.ts` — stubs for DASH-06
-- [ ] `test/unit/dolt/cost-queries.test.ts` — stubs for COST-01
+- [ ] `test/unit/dolt/cost-queries.test.ts` — stubs for COST-01, COST-03
 
 ---
 
