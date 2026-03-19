@@ -21,17 +21,17 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Phase Assignment
 
-- [ ] **PHASE-01**: Developer can claim an unassigned phase with `forge claim <phase>`
-- [ ] **PHASE-02**: Team lead can assign a phase to a developer with `forge assign <phase> --to <dev>`
-- [ ] **PHASE-03**: Developer can release their phase assignment with `forge release <phase>`
+- [x] **PHASE-01**: Developer can claim an unassigned phase with `forge claim <phase>`
+- [x] **PHASE-02**: Team lead can assign a phase to a developer with `forge assign <phase> --to <dev>`
+- [x] **PHASE-03**: Developer can release their phase assignment with `forge release <phase>`
 - [x] **PHASE-04**: `forge phases` shows all phases with current ownership and status
-- [ ] **PHASE-05**: Phase assignment enforces 1:1:1 model (one phase, one branch, one developer)
-- [ ] **PHASE-06**: Phase status tracks lifecycle: assigned, in_progress, pr_open, merged, blocked
+- [x] **PHASE-05**: Phase assignment enforces 1:1:1 model (one phase, one branch, one developer)
+- [x] **PHASE-06**: Phase status tracks lifecycle: assigned, in_progress, pr_open, merged, blocked
 
 ### Branch Management
 
-- [ ] **BRANCH-01**: Branch auto-created on `forge claim` following `gsd/phase-{N}-{slug}` pattern
-- [ ] **BRANCH-02**: Branch naming convention enforced by Forge (reject non-conforming branches)
+- [x] **BRANCH-01**: Branch auto-created on `forge claim` following `gsd/phase-{N}-{slug}` pattern
+- [x] **BRANCH-02**: Branch naming convention enforced by Forge (reject non-conforming branches)
 
 ### GSD Artifact Reading
 
@@ -150,14 +150,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | IDENT-01 | Phase 1 | Complete |
 | IDENT-02 | Phase 1 | Complete |
 | IDENT-03 | Phase 1 | Complete |
-| PHASE-01 | Phase 1 | Pending |
-| PHASE-02 | Phase 1 | Pending |
-| PHASE-03 | Phase 1 | Pending |
+| PHASE-01 | Phase 1 | Complete |
+| PHASE-02 | Phase 1 | Complete |
+| PHASE-03 | Phase 1 | Complete |
 | PHASE-04 | Phase 1 | Complete |
-| PHASE-05 | Phase 1 | Pending |
-| PHASE-06 | Phase 1 | Pending |
-| BRANCH-01 | Phase 1 | Pending |
-| BRANCH-02 | Phase 1 | Pending |
+| PHASE-05 | Phase 1 | Complete |
+| PHASE-06 | Phase 1 | Complete |
+| BRANCH-01 | Phase 1 | Complete |
+| BRANCH-02 | Phase 1 | Complete |
 | CLI-01 | Phase 1 | Complete |
 | CLI-02 | Phase 1 | Complete |
 | CLI-03 | Phase 1 | Complete |
