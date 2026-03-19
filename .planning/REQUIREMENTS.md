@@ -64,16 +64,16 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### CI Gate Pipeline
 
-- [ ] **CI-01**: GitHub Action workflow runs on PR: flow freshness check
+- [x] **CI-01**: GitHub Action workflow runs on PR: flow freshness check
 - [x] **CI-02**: GitHub Action workflow runs on PR: touch map conflict check against other open PRs
 - [x] **CI-03**: GitHub Action workflow runs on PR: GSD config validation (ensure team-standard config)
-- [ ] **CI-04**: GitHub Action workflow runs on PR: test suite pass
+- [x] **CI-04**: GitHub Action workflow runs on PR: test suite pass
 - [x] **CI-05**: GitHub Action workflow runs on PR: cost audit (per-PR cost estimate)
 - [x] **CI-06**: Forge posts CI gate results as PR comment
 
 ### Flow Document Management
 
-- [ ] **FLOW-01**: Flow freshness gate blocks PRs with stale documentation (existing Python gate)
+- [x] **FLOW-01**: Flow freshness gate blocks PRs with stale documentation (existing Python gate)
 - [x] **FLOW-02**: Webhook-driven Librarian triggers on push events to update `.flows/` files
 - [x] **FLOW-03**: Flow documents have criticality levels that determine freshness thresholds
 
@@ -175,13 +175,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LOCK-02 | Phase 2 | Complete |
 | LOCK-03 | Phase 2 | Complete |
 | LOCK-04 | Phase 2 | Complete |
-| CI-01 | Phase 3 | Pending |
+| CI-01 | Phase 3 | Complete |
 | CI-02 | Phase 3 | Complete |
 | CI-03 | Phase 3 | Complete |
-| CI-04 | Phase 3 | Pending |
+| CI-04 | Phase 3 | Complete |
 | CI-05 | Phase 3 | Complete |
 | CI-06 | Phase 3 | Complete |
-| FLOW-01 | Phase 3 | Pending |
+| FLOW-01 | Phase 3 | Complete |
 | FLOW-02 | Phase 3 | Complete |
 | FLOW-03 | Phase 3 | Complete |
 | MERGE-01 | Phase 3 | Complete |
