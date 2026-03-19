@@ -1,7 +1,7 @@
 import type { Command } from "commander";
 import chalk from "chalk";
 import Table from "cli-table3";
-import simpleGit from "simple-git";
+import { simpleGit } from "simple-git";
 import * as queries from "../dolt/queries.js";
 
 export function registerCommands(program: Command) {
