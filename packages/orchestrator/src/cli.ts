@@ -13,6 +13,8 @@ import { statusCommands } from "./commands/status.js";
 import { phaseCommands } from "./commands/phases.js";
 import { conflictCommands } from "./commands/conflicts.js";
 import { mergeOrderCommands } from "./commands/merge-order.js";
+import { costCommands } from "./commands/cost.js";
+import { dashboardCommands } from "./commands/dashboard.js";
 
 const PID_DIR = resolve(process.cwd(), ".forge", "pids");
 
@@ -29,6 +31,8 @@ statusCommands(program);
 phaseCommands(program);
 conflictCommands(program);
 mergeOrderCommands(program);
+costCommands(program);
+dashboardCommands(program);
 
 // ─── Legacy commands (preserved from v0.1.0) ────────────────────────────────
 
@@ -202,27 +206,6 @@ program
       notes: "Cancelled by user",
     });
     console.log(`Cycle ${cycleId} cancelled.`);
-  });
-
-program
-  .command("cost")
-  .description("Show cost report for a cycle")
-  .argument("<cycle-id>", "Cycle ID")
-  .action(async (cycleId: string) => {
-    const costs = await queries.getCycleCosts(cycleId);
-    if (costs.length === 0) {
-      console.log("No cost data found for this cycle.");
-      return;
-    }
-    let total = 0;
-    console.log("Stage             Model                          Cost");
-    console.log("\u2500".repeat(60));
-    for (const c of costs) {
-      console.log(`${c.stage.padEnd(18)}${c.model.padEnd(32)}$${c.cost_usd.toFixed(4)}`);
-      total += c.cost_usd;
-    }
-    console.log("\u2500".repeat(60));
-    console.log(`Total: $${total.toFixed(4)}`);
   });
 
 program
