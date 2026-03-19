@@ -116,3 +116,44 @@ export interface WorkLog {
   detail: string | null;
   logged_at: number;
 }
+
+// ─── v2 Team Coordination Types ─────────────────────────────────────────────
+
+export type PhaseStatus = "assigned" | "in_progress" | "pr_open" | "merged" | "blocked";
+
+export interface Developer {
+  id: string;            // github username (PRIMARY KEY)
+  display_name: string;
+  registered_at: number; // epoch ms
+  last_active: number;   // epoch ms
+  current_phase: number | null;
+  current_branch: string | null;
+}
+
+export interface PhaseAssignment {
+  phase_id: number;      // PRIMARY KEY
+  assignee: string;      // developer.id
+  assigned_at: number;   // epoch ms
+  status: PhaseStatus;
+  branch_name: string;
+  pr_number: number | null;
+}
+
+export interface FileLock {
+  file_path: string;     // PRIMARY KEY
+  locked_by: string;     // developer.id
+  phase_id: number;
+  locked_at: number;     // epoch ms
+  reason: string | null;
+}
+
+export interface DeveloperCost {
+  id: number;            // AUTO_INCREMENT
+  developer_id: string;
+  phase_id: number;
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+  cost_usd: number;
+  recorded_at: number;   // epoch ms
+}

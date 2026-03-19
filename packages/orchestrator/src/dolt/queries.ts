@@ -13,6 +13,11 @@ import type {
   FlowRegistryEntry,
   CycleCost,
   WorkLog,
+  Developer,
+  PhaseAssignment,
+  PhaseStatus,
+  FileLock,
+  DeveloperCost,
 } from "./schema.js";
 import type { RowDataPacket } from "mysql2";
 
@@ -423,5 +428,130 @@ export async function getCycleCosts(
   return query<(CycleCost & RowDataPacket)[]>(
     `SELECT * FROM cycle_costs WHERE cycle_id = ? ORDER BY recorded_at ASC`,
     [cycleId],
+  );
+}
+
+// ─── Developers (v2) ────────────────────────────────────────────────────────
+
+export async function registerDeveloper(params: {
+  id: string;
+  display_name: string;
+}): Promise<Developer> {
+  const now = Date.now();
+  await execute(
+    `INSERT INTO developers (id, display_name, registered_at, last_active)
+     VALUES (?, ?, ?, ?)`,
+    [params.id, params.display_name, now, now],
+  );
+  return getDeveloper(params.id) as Promise<Developer>;
+}
+
+export async function getDeveloper(id: string): Promise<Developer | null> {
+  const rows = await query<(Developer & RowDataPacket)[]>(
+    `SELECT * FROM developers WHERE id = ?`,
+    [id],
+  );
+  return rows[0] || null;
+}
+
+export async function getAllDevelopers(): Promise<Developer[]> {
+  return query<(Developer & RowDataPacket)[]>(
+    `SELECT * FROM developers ORDER BY registered_at ASC`,
+  );
+}
+
+export async function updateDeveloperActivity(id: string): Promise<void> {
+  await execute(
+    `UPDATE developers SET last_active = ? WHERE id = ?`,
+    [Date.now(), id],
+  );
+}
+
+// ─── Phase Assignments (v2) ─────────────────────────────────────────────────
+
+export async function claimPhase(params: {
+  phase_id: number;
+  assignee: string;
+  branch_name: string;
+}): Promise<PhaseAssignment> {
+  return transaction(async (conn) => {
+    // Check phase not already assigned
+    const [existingRows] = await conn.execute<RowDataPacket[]>(
+      `SELECT * FROM phase_assignments WHERE phase_id = ? AND status NOT IN ('merged')`,
+      [params.phase_id],
+    );
+    if ((existingRows as RowDataPacket[]).length > 0) {
+      throw new Error(`Phase ${params.phase_id} is already assigned`);
+    }
+    // Check developer doesn't already have an active phase (1:1:1 enforcement)
+    const [devRows] = await conn.execute<RowDataPacket[]>(
+      `SELECT * FROM phase_assignments WHERE assignee = ? AND status NOT IN ('merged')`,
+      [params.assignee],
+    );
+    if ((devRows as RowDataPacket[]).length > 0) {
+      throw new Error(`Developer ${params.assignee} already has an active phase assignment`);
+    }
+    // Insert assignment
+    const now = Date.now();
+    await conn.execute(
+      `INSERT INTO phase_assignments (phase_id, assignee, assigned_at, status, branch_name)
+       VALUES (?, ?, ?, 'assigned', ?)`,
+      [params.phase_id, params.assignee, now, params.branch_name],
+    );
+    // Update developer's current_phase
+    await conn.execute(
+      `UPDATE developers SET current_phase = ?, current_branch = ?, last_active = ? WHERE id = ?`,
+      [params.phase_id, params.branch_name, now, params.assignee],
+    );
+    return {
+      phase_id: params.phase_id,
+      assignee: params.assignee,
+      assigned_at: now,
+      status: "assigned" as PhaseStatus,
+      branch_name: params.branch_name,
+      pr_number: null,
+    };
+  });
+}
+
+export async function releasePhase(phaseId: number): Promise<void> {
+  return transaction(async (conn) => {
+    const [rows] = await conn.execute<RowDataPacket[]>(
+      `SELECT assignee FROM phase_assignments WHERE phase_id = ?`,
+      [phaseId],
+    );
+    const assignment = (rows as RowDataPacket[])[0];
+    if (!assignment) {
+      throw new Error(`Phase ${phaseId} is not assigned`);
+    }
+    await conn.execute(
+      `DELETE FROM phase_assignments WHERE phase_id = ?`,
+      [phaseId],
+    );
+    await conn.execute(
+      `UPDATE developers SET current_phase = NULL, current_branch = NULL, last_active = ? WHERE id = ?`,
+      [Date.now(), assignment.assignee],
+    );
+  });
+}
+
+export async function getPhaseAssignment(phaseId: number): Promise<PhaseAssignment | null> {
+  const rows = await query<(PhaseAssignment & RowDataPacket)[]>(
+    `SELECT * FROM phase_assignments WHERE phase_id = ?`,
+    [phaseId],
+  );
+  return rows[0] || null;
+}
+
+export async function getAllPhaseAssignments(): Promise<PhaseAssignment[]> {
+  return query<(PhaseAssignment & RowDataPacket)[]>(
+    `SELECT * FROM phase_assignments ORDER BY phase_id ASC`,
+  );
+}
+
+export async function updatePhaseStatus(phaseId: number, status: PhaseStatus): Promise<void> {
+  await execute(
+    `UPDATE phase_assignments SET status = ? WHERE phase_id = ?`,
+    [status, phaseId],
   );
 }
