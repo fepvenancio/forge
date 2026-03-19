@@ -35,25 +35,25 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### GSD Artifact Reading
 
-- [ ] **GSD-01**: Forge reads ROADMAP.md to extract phase definitions, goals, and success criteria
-- [ ] **GSD-02**: Forge reads PLAN.md to extract touch maps (which files each plan modifies)
-- [ ] **GSD-03**: Forge reads SUMMARY.md to determine completion status and commits produced
-- [ ] **GSD-04**: Forge reads config.json to validate team-standard configuration
+- [x] **GSD-01**: Forge reads ROADMAP.md to extract phase definitions, goals, and success criteria
+- [x] **GSD-02**: Forge reads PLAN.md to extract touch maps (which files each plan modifies)
+- [x] **GSD-03**: Forge reads SUMMARY.md to determine completion status and commits produced
+- [x] **GSD-04**: Forge reads config.json to validate team-standard configuration
 - [ ] **GSD-05**: Forge never writes to `.planning/` files (read-only integration)
 
 ### Touch Map Conflict Detection
 
-- [ ] **CONFLICT-01**: `forge check-conflicts` compares touch maps across all active phase branches
-- [ ] **CONFLICT-02**: Conflict detection uses hybrid approach: declared PLAN.md touch maps + actual `git diff` data
-- [ ] **CONFLICT-03**: Conflicts reported at file level with phase identifiers (e.g., "Phase 3 and Phase 5 both modify `src/auth/login.ts`")
-- [ ] **CONFLICT-04**: Conflict check runs automatically on PR open via GitHub webhook
+- [x] **CONFLICT-01**: `forge check-conflicts` compares touch maps across all active phase branches
+- [x] **CONFLICT-02**: Conflict detection uses hybrid approach: declared PLAN.md touch maps + actual `git diff` data
+- [x] **CONFLICT-03**: Conflicts reported at file level with phase identifiers (e.g., "Phase 3 and Phase 5 both modify `src/auth/login.ts`")
+- [x] **CONFLICT-04**: Conflict check runs automatically on PR open via GitHub webhook
 
 ### Advisory File Locks
 
-- [ ] **LOCK-01**: Developer can lock a file with `forge lock <file> --phase <N>`
-- [ ] **LOCK-02**: Developer can unlock a file with `forge unlock <file>`
-- [ ] **LOCK-03**: `forge locks` shows all active file locks with owner, phase, and timestamp
-- [ ] **LOCK-04**: Locks are advisory only — warn on conflict, never block operations
+- [x] **LOCK-01**: Developer can lock a file with `forge lock <file> --phase <N>`
+- [x] **LOCK-02**: Developer can unlock a file with `forge unlock <file>`
+- [x] **LOCK-03**: `forge locks` shows all active file locks with owner, phase, and timestamp
+- [x] **LOCK-04**: Locks are advisory only — warn on conflict, never block operations
 
 ### Merge Order Engine
 
@@ -162,19 +162,19 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CLI-02 | Phase 1 | Complete |
 | CLI-03 | Phase 1 | Complete |
 | CLI-04 | Phase 1 | Complete |
-| GSD-01 | Phase 2 | Pending |
-| GSD-02 | Phase 2 | Pending |
-| GSD-03 | Phase 2 | Pending |
-| GSD-04 | Phase 2 | Pending |
+| GSD-01 | Phase 2 | Complete |
+| GSD-02 | Phase 2 | Complete |
+| GSD-03 | Phase 2 | Complete |
+| GSD-04 | Phase 2 | Complete |
 | GSD-05 | Phase 2 | Pending |
-| CONFLICT-01 | Phase 2 | Pending |
-| CONFLICT-02 | Phase 2 | Pending |
-| CONFLICT-03 | Phase 2 | Pending |
-| CONFLICT-04 | Phase 2 | Pending |
-| LOCK-01 | Phase 2 | Pending |
-| LOCK-02 | Phase 2 | Pending |
-| LOCK-03 | Phase 2 | Pending |
-| LOCK-04 | Phase 2 | Pending |
+| CONFLICT-01 | Phase 2 | Complete |
+| CONFLICT-02 | Phase 2 | Complete |
+| CONFLICT-03 | Phase 2 | Complete |
+| CONFLICT-04 | Phase 2 | Complete |
+| LOCK-01 | Phase 2 | Complete |
+| LOCK-02 | Phase 2 | Complete |
+| LOCK-03 | Phase 2 | Complete |
+| LOCK-04 | Phase 2 | Complete |
 | CI-01 | Phase 3 | Pending |
 | CI-02 | Phase 3 | Pending |
 | CI-03 | Phase 3 | Pending |
