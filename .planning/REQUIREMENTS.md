@@ -39,7 +39,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **GSD-02**: Forge reads PLAN.md to extract touch maps (which files each plan modifies)
 - [x] **GSD-03**: Forge reads SUMMARY.md to determine completion status and commits produced
 - [x] **GSD-04**: Forge reads config.json to validate team-standard configuration
-- [ ] **GSD-05**: Forge never writes to `.planning/` files (read-only integration)
+- [x] **GSD-05**: Forge never writes to `.planning/` files (read-only integration)
 
 ### Touch Map Conflict Detection
 
@@ -166,7 +166,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GSD-02 | Phase 2 | Complete |
 | GSD-03 | Phase 2 | Complete |
 | GSD-04 | Phase 2 | Complete |
-| GSD-05 | Phase 2 | Pending |
+| GSD-05 | Phase 2 | Complete |
 | CONFLICT-01 | Phase 2 | Complete |
 | CONFLICT-02 | Phase 2 | Complete |
 | CONFLICT-03 | Phase 2 | Complete |
