@@ -33,12 +33,13 @@ Multiple developers can work on the same repo simultaneously with Claude Code + 
 - ✓ Touch map conflict detection — hybrid declared+actual, forge check-conflicts — Phase 2
 - ✓ Advisory file locks (forge lock/unlock/locks, warn but never block) — Phase 2
 - ✓ PR webhook auto-triggers conflict check on PR open — Phase 2
+- ✓ CI gate pipeline (forge-gates.yml: flow freshness, touch map conflicts, config validation, tests, cost audit) — Phase 3
+- ✓ Flow document management (push handler marks stale, criticality-based freshness thresholds) — Phase 3
+- ✓ Merge order engine (Kahn's algorithm, forge merge-order CLI, PR comments) — Phase 3
+- ✓ Human escalation (Slack/Discord/Teams webhook with conflict context) — Phase 3
 
 ### Active
 
-- [ ] Flow document management — Librarian agent triggers on push, freshness gate in CI
-- [ ] CI gate pipeline — GitHub Actions: flow freshness, touch map conflicts, config validation, tests, cost audit
-- [ ] Merge order engine — dependency graph analysis, suggested merge order, PR comments
 - [ ] Team dashboard — Streamlit with phase ownership, PR status, merge order, cost per dev, file lock map
 - [ ] Cost tracking & reporting — per-developer, per-phase, per-model cost breakdown with budget alerts
 
@@ -88,4 +89,4 @@ Initial users: solo developer coordinating multiple Claude Code sessions, growin
 | Streamlit for dashboard | Already exists, easy to extend, good enough for team of 3-10 | — Pending |
 
 ---
-*Last updated: 2026-03-19 after Phase 2 completion*
+*Last updated: 2026-03-19 after Phase 3 completion*
