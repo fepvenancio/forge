@@ -48,8 +48,26 @@ def get_changed_files():
         return [f.strip() for f in result.stdout.strip().split("\n") if f.strip()]
 
 
+def get_staleness_threshold_days(criticality):
+    """Return the staleness threshold in days based on flow criticality level.
+
+    Higher criticality flows have shorter thresholds (must be updated sooner).
+    """
+    thresholds = {
+        "critical": 1,
+        "high": 3,
+        "medium": 7,
+        "low": 14,
+    }
+    return thresholds.get(criticality, 7)  # default to medium
+
+
 def check_flow_freshness(changed_files):
-    """Check if any flows covering the changed files are stale."""
+    """Check if any flows covering the changed files are stale.
+
+    Uses criticality-based staleness thresholds: critical flows must be
+    updated within 1 day, high within 3 days, medium within 7, low within 14.
+    """
     try:
         conn = get_dolt_connection()
     except Exception as e:
@@ -61,11 +79,18 @@ def check_flow_freshness(changed_files):
 
     try:
         with conn.cursor() as cursor:
-            # Get all stale flows
+            # Get all stale flows using criticality-based thresholds (FLOW-03)
+            # A flow is considered stale if:
+            # 1. Its stale flag is TRUE, OR
+            # 2. Its last_updated is older than the criticality-based threshold
             cursor.execute(
-                "SELECT fr.flow_path, fr.title, fr.criticality "
+                "SELECT fr.flow_path, fr.title, fr.criticality, fr.last_updated "
                 "FROM flow_registry fr "
-                "WHERE fr.stale = TRUE"
+                "WHERE fr.stale = TRUE "
+                "   OR (fr.criticality = 'critical' AND fr.last_updated < DATE_SUB(NOW(), INTERVAL 1 DAY)) "
+                "   OR (fr.criticality = 'high' AND fr.last_updated < DATE_SUB(NOW(), INTERVAL 3 DAY)) "
+                "   OR (fr.criticality = 'medium' AND fr.last_updated < DATE_SUB(NOW(), INTERVAL 7 DAY)) "
+                "   OR (fr.criticality = 'low' AND fr.last_updated < DATE_SUB(NOW(), INTERVAL 14 DAY))"
             )
             all_stale = cursor.fetchall()
 
@@ -78,7 +103,11 @@ def check_flow_freshness(changed_files):
                 "SELECT fr.flow_path, fr.title, fr.criticality, ffr.file_pattern "
                 "FROM flow_registry fr "
                 "JOIN flow_file_refs ffr ON fr.id = ffr.flow_id "
-                "WHERE fr.stale = TRUE"
+                "WHERE fr.stale = TRUE "
+                "   OR (fr.criticality = 'critical' AND fr.last_updated < DATE_SUB(NOW(), INTERVAL 1 DAY)) "
+                "   OR (fr.criticality = 'high' AND fr.last_updated < DATE_SUB(NOW(), INTERVAL 3 DAY)) "
+                "   OR (fr.criticality = 'medium' AND fr.last_updated < DATE_SUB(NOW(), INTERVAL 7 DAY)) "
+                "   OR (fr.criticality = 'low' AND fr.last_updated < DATE_SUB(NOW(), INTERVAL 14 DAY))"
             )
             stale_refs = cursor.fetchall()
 
@@ -107,7 +136,9 @@ def check_flow_freshness(changed_files):
     print(f"The following stale flows cover files changed in this PR:")
     print()
     for sf in stale_flows:
-        crit = f" [{sf['criticality'].upper()}]" if sf["criticality"] in ("high", "critical") else ""
+        crit_level = sf["criticality"]
+        threshold = get_staleness_threshold_days(crit_level)
+        crit = f" [{crit_level.upper()} - max {threshold}d]"
         print(f"  - {sf['flow']}{crit}")
         print(f"    Title: {sf['title']}")
         print(f"    Matched: {sf['matched_file']} (pattern: {sf['pattern']})")
