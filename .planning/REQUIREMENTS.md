@@ -84,11 +84,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Team Dashboard
 
-- [ ] **DASH-01**: Streamlit dashboard shows phase ownership (who's on what)
-- [ ] **DASH-02**: Dashboard shows PR status for all phase branches
-- [ ] **DASH-03**: Dashboard shows merge order recommendation
-- [ ] **DASH-04**: Dashboard shows file lock map (which files are locked by whom)
-- [ ] **DASH-05**: Dashboard shows cost per developer and per phase
+- [x] **DASH-01**: Streamlit dashboard shows phase ownership (who's on what)
+- [x] **DASH-02**: Dashboard shows PR status for all phase branches
+- [x] **DASH-03**: Dashboard shows merge order recommendation
+- [x] **DASH-04**: Dashboard shows file lock map (which files are locked by whom)
+- [x] **DASH-05**: Dashboard shows cost per developer and per phase
 - [x] **DASH-06**: `forge dashboard` launches the Streamlit app
 
 ### Cost Tracking
@@ -97,7 +97,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **COST-02**: `forge cost` shows cost report (supports `--team` and `--dev <name>` flags)
 - [x] **COST-03**: Cost-per-PR analysis correlates developer cost reports with phase/PR
 - [x] **COST-04**: Budget alerts when phase cost exceeds configurable threshold
-- [ ] **COST-05**: Cost data displayed in team dashboard
+- [x] **COST-05**: Cost data displayed in team dashboard
 
 ### CLI Interface
 
@@ -190,17 +190,17 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MERGE-04 | Phase 3 | Complete |
 | ESC-01 | Phase 3 | Complete |
 | ESC-02 | Phase 3 | Complete |
-| DASH-01 | Phase 4 | Pending |
-| DASH-02 | Phase 4 | Pending |
-| DASH-03 | Phase 4 | Pending |
-| DASH-04 | Phase 4 | Pending |
-| DASH-05 | Phase 4 | Pending |
+| DASH-01 | Phase 4 | Complete |
+| DASH-02 | Phase 4 | Complete |
+| DASH-03 | Phase 4 | Complete |
+| DASH-04 | Phase 4 | Complete |
+| DASH-05 | Phase 4 | Complete |
 | DASH-06 | Phase 4 | Complete |
 | COST-01 | Phase 4 | Complete |
 | COST-02 | Phase 4 | Complete |
 | COST-03 | Phase 4 | Complete |
 | COST-04 | Phase 4 | Complete |
-| COST-05 | Phase 4 | Pending |
+| COST-05 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 57 total
