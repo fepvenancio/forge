@@ -38,10 +38,13 @@ Multiple developers can work on the same repo simultaneously with Claude Code + 
 - ✓ Merge order engine (Kahn's algorithm, forge merge-order CLI, PR comments) — Phase 3
 - ✓ Human escalation (Slack/Discord/Teams webhook with conflict context) — Phase 3
 
+- ✓ Team dashboard (5 Streamlit pages: phase_map, pr_status, merge_order, file_locks, team_costs) — Phase 4
+- ✓ Cost tracking & reporting (forge cost --team/--dev/--pr, budget alerts, per-PR correlation) — Phase 4
+- ✓ Dashboard launcher (forge dashboard) — Phase 4
+
 ### Active
 
-- [ ] Team dashboard — Streamlit with phase ownership, PR status, merge order, cost per dev, file lock map
-- [ ] Cost tracking & reporting — per-developer, per-phase, per-model cost breakdown with budget alerts
+(All v1 requirements complete — ready for milestone review)
 
 ### Out of Scope
 
@@ -89,4 +92,4 @@ Initial users: solo developer coordinating multiple Claude Code sessions, growin
 | Streamlit for dashboard | Already exists, easy to extend, good enough for team of 3-10 | — Pending |
 
 ---
-*Last updated: 2026-03-19 after Phase 3 completion*
+*Last updated: 2026-03-19 after Phase 4 completion (all phases complete)*
