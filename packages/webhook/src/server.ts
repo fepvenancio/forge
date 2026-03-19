@@ -79,6 +79,68 @@ async function handlePullRequestOpened(payload: PullRequestPayload): Promise<str
   }
 }
 
+// ─── Push Event Handler (FLOW-02) ───────────────────────────────────────────
+
+interface PushPayload {
+  ref: string; // "refs/heads/gsd/phase-1-foundation"
+  commits: Array<{
+    added: string[];
+    modified: string[];
+    removed: string[];
+  }>;
+  repository: {
+    owner: { login: string };
+    name: string;
+  };
+}
+
+function extractChangedFiles(payload: PushPayload): string[] {
+  const files = new Set<string>();
+  for (const commit of payload.commits) {
+    for (const f of commit.added) files.add(f);
+    for (const f of commit.modified) files.add(f);
+    for (const f of commit.removed) files.add(f);
+  }
+  return [...files];
+}
+
+async function handlePushEvent(payload: PushPayload): Promise<string> {
+  const branch = payload.ref.replace("refs/heads/", "");
+
+  if (!isGsdBranch(branch)) {
+    return `Skipping non-GSD branch: ${branch}`;
+  }
+
+  const changedFiles = extractChangedFiles(payload);
+
+  if (changedFiles.length === 0) {
+    return "No flows affected";
+  }
+
+  try {
+    const queries = await import("../../orchestrator/src/dolt/queries.js");
+    let staleCount = 0;
+
+    for (const file of changedFiles) {
+      const flows = await queries.getFlowsForFile(file);
+      for (const flow of flows) {
+        await queries.markFlowStale(flow.id);
+        staleCount++;
+      }
+    }
+
+    if (staleCount === 0) {
+      return "No flows affected";
+    }
+
+    return `Marked ${staleCount} flow(s) as stale for ${changedFiles.length} changed file(s)`;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[push-handler] Dolt unavailable: ${msg}`);
+    return "Push processed (Dolt unavailable, flow staleness not updated)";
+  }
+}
+
 // ─── Routes ────────────────────────────────────────────────────────────────
 
 app.post("/github-webhook", async (req, res) => {
@@ -107,6 +169,13 @@ app.post("/github-webhook", async (req, res) => {
     }
   }
 
+  if (event === "push") {
+    const result = await handlePushEvent(req.body as PushPayload);
+    console.log(result);
+    res.status(200).json({ message: result });
+    return;
+  }
+
   res.sendStatus(200);
 });
 
@@ -119,4 +188,4 @@ app.listen(PORT, () => {
   console.log(`Forge webhook server listening on port ${PORT}`);
 });
 
-export { app, handlePullRequestOpened, isGsdBranch };
+export { app, handlePullRequestOpened, handlePushEvent, extractChangedFiles, isGsdBranch };
