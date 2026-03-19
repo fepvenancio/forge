@@ -602,3 +602,83 @@ export async function getFileLocksForPhase(phaseId: number): Promise<FileLock[]>
     [phaseId],
   );
 }
+
+// ─── Developer Costs (v2) ───────────────────────────────────────────────────
+
+export async function recordDeveloperCost(params: {
+  developer_id: string;
+  phase_id: number;
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+  cost_usd: number;
+}): Promise<DeveloperCost> {
+  const now = Date.now();
+  const result = await execute(
+    `INSERT INTO developer_costs (developer_id, phase_id, model, input_tokens, output_tokens, cost_usd, recorded_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [params.developer_id, params.phase_id, params.model, params.input_tokens, params.output_tokens, params.cost_usd, now],
+  );
+  return {
+    id: result.insertId,
+    developer_id: params.developer_id,
+    phase_id: params.phase_id,
+    model: params.model,
+    input_tokens: params.input_tokens,
+    output_tokens: params.output_tokens,
+    cost_usd: params.cost_usd,
+    recorded_at: now,
+  };
+}
+
+export async function getDeveloperCosts(developerId: string): Promise<DeveloperCost[]> {
+  return query<(DeveloperCost & RowDataPacket)[]>(
+    `SELECT * FROM developer_costs WHERE developer_id = ? ORDER BY recorded_at DESC`,
+    [developerId],
+  );
+}
+
+export async function getPhaseCosts(phaseId: number): Promise<DeveloperCost[]> {
+  return query<(DeveloperCost & RowDataPacket)[]>(
+    `SELECT * FROM developer_costs WHERE phase_id = ? ORDER BY recorded_at DESC`,
+    [phaseId],
+  );
+}
+
+export async function getTeamCostSummary(): Promise<Array<{
+  developer_id: string;
+  phase_id: number;
+  total_cost: number;
+  total_input: number;
+  total_output: number;
+  record_count: number;
+}>> {
+  return query<RowDataPacket[]>(
+    `SELECT developer_id, phase_id, SUM(cost_usd) as total_cost, SUM(input_tokens) as total_input, SUM(output_tokens) as total_output, COUNT(*) as record_count
+     FROM developer_costs GROUP BY developer_id, phase_id ORDER BY developer_id, phase_id`,
+  ) as any;
+}
+
+export async function getPhaseTotalCost(phaseId: number): Promise<number> {
+  const rows = await query<RowDataPacket[]>(
+    `SELECT COALESCE(SUM(cost_usd), 0) as total FROM developer_costs WHERE phase_id = ?`,
+    [phaseId],
+  );
+  return Number(rows[0]?.total || 0);
+}
+
+export async function getCostsByPR(): Promise<Array<{
+  developer_id: string;
+  phase_id: number;
+  model: string;
+  cost_usd: number;
+  input_tokens: number;
+  output_tokens: number;
+  pr_number: number;
+}>> {
+  return query<RowDataPacket[]>(
+    `SELECT dc.developer_id, dc.phase_id, dc.model, dc.cost_usd, dc.input_tokens, dc.output_tokens, pa.pr_number
+     FROM developer_costs dc JOIN phase_assignments pa ON dc.phase_id = pa.phase_id
+     WHERE pa.pr_number IS NOT NULL ORDER BY pa.pr_number DESC`,
+  ) as any;
+}
