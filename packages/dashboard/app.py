@@ -15,7 +15,7 @@ st.set_page_config(
 )
 
 st.title("Forge Dashboard")
-st.markdown("*Autonomous Engineering Factory*")
+st.markdown("*Team Coordination Layer*")
 
 # Sidebar navigation
 st.sidebar.title("Navigation")
@@ -26,15 +26,26 @@ st.markdown("""
 
 Use the sidebar to navigate between views:
 
-- **Task Board** — Live table of all tasks with status, filtering, and actions
-- **Audit Trail** — Timeline view of stage runs and artifacts for each cycle
-- **Cost Tracker** — Cost per cycle charts and breakdowns
+### Team Coordination (v2)
+
+- **Phase Map** -- Phase ownership: who's working on what, with status
+- **PR Status** -- PR status for all phase branches
+- **Merge Order** -- Recommended merge order using dependency analysis
+- **File Locks** -- Advisory file lock map showing locked files
+- **Team Costs** -- Cost per developer and per phase with budget alerts
+
+### Legacy Views (v0.1.0)
+
+- **Task Board** -- Live table of all tasks with status, filtering, and actions
+- **Audit Trail** -- Timeline view of stage runs and artifacts for each cycle
+- **Cost Tracker** -- Cost per cycle charts and breakdowns
 
 ### Quick Start
 
 1. Ensure Dolt is running (`scripts/init-dolt.sh`)
-2. Start a cycle: `forge run <prp-path>`
-3. Monitor progress here
+2. Register: `forge register`
+3. Claim a phase: `forge claim <N>`
+4. Monitor progress here
 
 ### Connection Status
 """)
