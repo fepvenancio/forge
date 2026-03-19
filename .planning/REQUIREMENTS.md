@@ -101,8 +101,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### CLI Interface
 
-- [ ] **CLI-01**: All commands available via `forge <command>` with consistent help output
-- [ ] **CLI-02**: CLI uses commander with git-style subcommands
+- [x] **CLI-01**: All commands available via `forge <command>` with consistent help output
+- [x] **CLI-02**: CLI uses commander with git-style subcommands
 - [x] **CLI-03**: `forge sync` pulls latest roadmap and assignments from Dolt
 - [x] **CLI-04**: `forge status` shows team-wide status (who's on what, PR states)
 
@@ -158,8 +158,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PHASE-06 | Phase 1 | Pending |
 | BRANCH-01 | Phase 1 | Pending |
 | BRANCH-02 | Phase 1 | Pending |
-| CLI-01 | Phase 1 | Pending |
-| CLI-02 | Phase 1 | Pending |
+| CLI-01 | Phase 1 | Complete |
+| CLI-02 | Phase 1 | Complete |
 | CLI-03 | Phase 1 | Complete |
 | CLI-04 | Phase 1 | Complete |
 | GSD-01 | Phase 2 | Pending |
