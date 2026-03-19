@@ -11,6 +11,7 @@ import { registerCommands } from "./commands/register.js";
 import { syncCommands } from "./commands/sync.js";
 import { statusCommands } from "./commands/status.js";
 import { phaseCommands } from "./commands/phases.js";
+import { conflictCommands } from "./commands/conflicts.js";
 
 const PID_DIR = resolve(process.cwd(), ".forge", "pids");
 
@@ -25,6 +26,7 @@ registerCommands(program);
 syncCommands(program);
 statusCommands(program);
 phaseCommands(program);
+conflictCommands(program);
 
 // ─── Legacy commands (preserved from v0.1.0) ────────────────────────────────
 

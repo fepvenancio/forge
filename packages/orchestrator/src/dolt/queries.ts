@@ -555,3 +555,50 @@ export async function updatePhaseStatus(phaseId: number, status: PhaseStatus): P
     [status, phaseId],
   );
 }
+
+// ─── File Locks (v2) ─────────────────────────────────────────────────────────
+
+export async function lockFile(params: {
+  file_path: string;
+  locked_by: string;
+  phase_id: number;
+  reason?: string;
+}): Promise<FileLock> {
+  const now = Date.now();
+  await execute(
+    `INSERT INTO file_locks (file_path, locked_by, phase_id, locked_at, reason) VALUES (?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE locked_by = VALUES(locked_by), phase_id = VALUES(phase_id), locked_at = VALUES(locked_at), reason = VALUES(reason)`,
+    [params.file_path, params.locked_by, params.phase_id, now, params.reason || null],
+  );
+  return { file_path: params.file_path, locked_by: params.locked_by, phase_id: params.phase_id, locked_at: now, reason: params.reason || null };
+}
+
+export async function unlockFile(filePath: string, developerId: string): Promise<void> {
+  const rows = await query<(FileLock & RowDataPacket)[]>(
+    `SELECT * FROM file_locks WHERE file_path = ?`,
+    [filePath],
+  );
+  if (rows.length === 0) {
+    throw new Error(`File "${filePath}" is not locked`);
+  }
+  if (rows[0].locked_by !== developerId) {
+    throw new Error(`File "${filePath}" is locked by "${rows[0].locked_by}", not by you ("${developerId}")`);
+  }
+  await execute(
+    `DELETE FROM file_locks WHERE file_path = ? AND locked_by = ?`,
+    [filePath, developerId],
+  );
+}
+
+export async function getAllFileLocks(): Promise<FileLock[]> {
+  return query<(FileLock & RowDataPacket)[]>(
+    `SELECT * FROM file_locks ORDER BY locked_at DESC`,
+  );
+}
+
+export async function getFileLocksForPhase(phaseId: number): Promise<FileLock[]> {
+  return query<(FileLock & RowDataPacket)[]>(
+    `SELECT * FROM file_locks WHERE phase_id = ?`,
+    [phaseId],
+  );
+}
