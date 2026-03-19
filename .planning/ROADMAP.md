@@ -46,11 +46,12 @@ Plans:
   2. Running `forge check-conflicts` reports file-level overlaps across active phase branches using both PLAN.md declared touch maps and actual `git diff` data
   3. Running `forge lock <file>` / `forge unlock <file>` / `forge locks` manages advisory file locks that warn on conflict but never block operations
   4. Conflict check triggers automatically on PR open via GitHub webhook and reports results
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: GSD artifact reader (read-only parsing of .planning/ files from branches)
-- [ ] 02-02: Touch map conflict detection and advisory file locks
+- [ ] 02-00-PLAN.md — Wave 0 test stubs and gray-matter installation
+- [ ] 02-01-PLAN.md — GSD artifact reader (git utility extensions, read-only parsing of .planning/ files from branches)
+- [ ] 02-02-PLAN.md — Conflict detection engine, advisory file locks, CLI commands, and PR webhook handler
 
 ### Phase 3: Event-Driven Enforcement
 **Goal**: PRs are automatically validated by CI gates (flow freshness, conflict checks, config validation, tests, cost audit), merge order is suggested for open PRs, and unresolvable conflicts escalate to humans
@@ -90,6 +91,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation and Developer Registry | 0/3 | Not started | - |
-| 2. Conflict Detection Engine | 0/2 | Not started | - |
+| 2. Conflict Detection Engine | 0/3 | Not started | - |
 | 3. Event-Driven Enforcement | 0/2 | Not started | - |
 | 4. Team Dashboard and Cost Tracking | 0/2 | Not started | - |
