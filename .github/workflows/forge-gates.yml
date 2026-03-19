@@ -1,0 +1,168 @@
+name: Forge Gates
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  flow-freshness:
+    runs-on: ubuntu-latest
+    outputs:
+      result: ${{ steps.check.outputs.result }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r packages/gates/requirements.txt
+      - id: check
+        run: |
+          if python packages/gates/flow_freshness.py; then
+            echo "result=pass" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=fail" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          DOLT_HOST: ${{ secrets.DOLT_HOST }}
+          DOLT_PORT: ${{ secrets.DOLT_PORT }}
+          DOLT_USER: ${{ secrets.DOLT_USER }}
+          DOLT_PASSWORD: ${{ secrets.DOLT_PASSWORD }}
+          DOLT_DATABASE: forge
+
+  conflict-check:
+    runs-on: ubuntu-latest
+    outputs:
+      result: ${{ steps.check.outputs.result }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r packages/gates/requirements.txt
+      - id: check
+        run: |
+          if python packages/gates/touch_map_conflicts.py; then
+            echo "result=pass" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=fail" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          DOLT_HOST: ${{ secrets.DOLT_HOST }}
+          DOLT_PORT: ${{ secrets.DOLT_PORT }}
+          DOLT_USER: ${{ secrets.DOLT_USER }}
+          DOLT_PASSWORD: ${{ secrets.DOLT_PASSWORD }}
+          DOLT_DATABASE: forge
+
+  config-validation:
+    runs-on: ubuntu-latest
+    outputs:
+      result: ${{ steps.check.outputs.result }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - id: check
+        run: |
+          if python packages/gates/config_validation.py; then
+            echo "result=pass" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=fail" >> "$GITHUB_OUTPUT"
+          fi
+
+  test-suite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm test
+
+  cost-audit:
+    runs-on: ubuntu-latest
+    outputs:
+      result: ${{ steps.check.outputs.result }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r packages/gates/requirements.txt
+      - id: check
+        run: |
+          if python packages/gates/cost_audit.py; then
+            echo "result=pass" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=fail" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          DOLT_HOST: ${{ secrets.DOLT_HOST }}
+          DOLT_PORT: ${{ secrets.DOLT_PORT }}
+          DOLT_USER: ${{ secrets.DOLT_USER }}
+          DOLT_PASSWORD: ${{ secrets.DOLT_PASSWORD }}
+          DOLT_DATABASE: forge
+
+  post-results:
+    needs: [flow-freshness, conflict-check, config-validation, test-suite, cost-audit]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- forge-gates-report -->';
+            const results = {
+              'Flow Freshness': '${{ needs.flow-freshness.outputs.result }}' || 'skipped',
+              'Conflict Check': '${{ needs.conflict-check.outputs.result }}' || 'skipped',
+              'Config Validation': '${{ needs.config-validation.outputs.result }}' || 'skipped',
+              'Test Suite': '${{ needs.test-suite.result }}',
+              'Cost Audit': '${{ needs.cost-audit.outputs.result }}' || 'skipped',
+            };
+            const icon = v => v === 'pass' || v === 'success' ? ':white_check_mark:' : v === 'skipped' || v === 'skip' ? ':fast_forward:' : v === 'warn' ? ':warning:' : ':x:';
+            const rows = Object.entries(results).map(([k,v]) => `| ${icon(v)} ${k} | ${v} |`).join('\n');
+            const body = [
+              marker,
+              '## Forge CI Gates',
+              '',
+              '| Gate | Result |',
+              '|------|--------|',
+              rows,
+              '',
+              `*Updated: ${new Date().toISOString()}*`,
+            ].join('\n');
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
