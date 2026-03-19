@@ -18,6 +18,7 @@ dist/
 # Dolt data directory (not the schema scripts)
 dolt/.dolt/
 dolt/*/
+!dolt/migrations/
 
 # IDE
 .vscode/
@@ -31,3 +32,8 @@ Thumbs.db
 
 # Test
 coverage/
+
+# GSD multi-user (per-developer state, not shared)
+.planning/STATE.md
+.planning/.continue-here
+.planning/debug/
