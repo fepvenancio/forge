@@ -29,12 +29,13 @@ Multiple developers can work on the same repo simultaneously with Claude Code + 
 - ✓ Commander CLI framework with git-style subcommands — Phase 1
 - ✓ Git branching enforcement: `gsd/phase-{N}-{slug}` pattern, 1:1:1 model — Phase 1
 - ✓ CLI commands: forge register, team, sync, status, claim, assign, release, phases — Phase 1
+- ✓ GSD artifact reading (ROADMAP.md, PLAN.md touch maps, SUMMARY.md, config.json) — read-only — Phase 2
+- ✓ Touch map conflict detection — hybrid declared+actual, forge check-conflicts — Phase 2
+- ✓ Advisory file locks (forge lock/unlock/locks, warn but never block) — Phase 2
+- ✓ PR webhook auto-triggers conflict check on PR open — Phase 2
 
 ### Active
 
-- [ ] Touch map conflict detection — compare PLAN.md touch maps across active phase branches
-- [ ] GSD artifact reading (ROADMAP.md, PLAN.md touch maps, SUMMARY.md, config.json) — read-only
-- [ ] Advisory file locks (trust developers, flag conflicts, don't block)
 - [ ] Flow document management — Librarian agent triggers on push, freshness gate in CI
 - [ ] CI gate pipeline — GitHub Actions: flow freshness, touch map conflicts, config validation, tests, cost audit
 - [ ] Merge order engine — dependency graph analysis, suggested merge order, PR comments
@@ -87,4 +88,4 @@ Initial users: solo developer coordinating multiple Claude Code sessions, growin
 | Streamlit for dashboard | Already exists, easy to extend, good enough for team of 3-10 | — Pending |
 
 ---
-*Last updated: 2026-03-19 after Phase 1 completion*
+*Last updated: 2026-03-19 after Phase 2 completion*
